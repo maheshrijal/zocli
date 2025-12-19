@@ -1,6 +1,6 @@
 # zocli
 
-Unofficial CLI for tracking Zomato orders (personal use, community tinkering). This project is intentionally small and hackable so other developers can plug in their own API discovery work.
+A tiny CLI to view and analyze your Zomato order history.
 
 ## What this is
 - A Go CLI scaffold with a **config store**, **local cache**, and **table output**
@@ -83,7 +83,8 @@ internal/sample        # Embedded mock orders
 - Add `swiggy` client behind the same interface
 
 ## Disclaimer
-This is a **personal, unofficial** tool. Using cookies or reverse-engineered endpoints may violate terms of service. Use at your own risk.
+This is an **unofficial** project and is **not affiliated with Zomato**. Please don't sue me 🙏  
+Using cookies or reverse-engineered endpoints may violate terms of service. Use at your own risk.
 
 ## Releasing (GoReleaser + Homebrew)
 This repo uses GoReleaser to publish binaries and update the Homebrew tap at `maheshrijal/homebrew-tap`.

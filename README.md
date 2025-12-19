@@ -47,6 +47,13 @@ Then sync:
 ./zocli sync
 ```
 
+## Install with Homebrew
+
+```bash
+brew tap maheshrijal/tap
+brew install maheshrijal/tap/zocli
+```
+
 ## Commands
 
 - `auth` — Save your Zomato cookie for future requests

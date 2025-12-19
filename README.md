@@ -90,7 +90,8 @@ internal/sample        # Embedded mock orders
 - Add `swiggy` client behind the same interface
 
 ## Disclaimer
-This is a **personal, unofficial** tool. Using cookies or reverse-engineered endpoints may violate terms of service. Use at your own risk.
+This is an **unofficial** project and is **not affiliated with Zomato**. Please don't sue me 🙏  
+Using cookies or reverse-engineered endpoints may violate terms of service. Use at your own risk.
 
 ## Releasing (GoReleaser + Homebrew)
 This repo uses GoReleaser to publish binaries and update the Homebrew tap at `maheshrijal/homebrew-tap`.

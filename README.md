@@ -3,10 +3,7 @@
 A tiny CLI to view and analyze your Zomato order history.
 
 ## What this is
-- A Go CLI scaffold with a **config store**, **local cache**, and **table output**
-- A **mock data path** so contributors can build UI and storage without live calls
-- A **browser-based auth flow** that captures cookies without copy/paste
-- A **placeholder Zomato client** where real endpoints can be wired in
+- A Go CLI for Zomato to check order history, spent amount, tracking etc. 
 
 ## What this is not
 - An official Zomato integration
@@ -14,14 +11,6 @@ A tiny CLI to view and analyze your Zomato order history.
 - A guarantee of ToS compliance
 
 ## Quick start
-
-```bash
-go build ./cmd/zocli
-
-./zocli help
-./zocli sync --mock
-./zocli orders
-```
 
 ## Auth without copy/paste (recommended)
 
@@ -75,35 +64,12 @@ internal/stats         # Spending summaries
 internal/sample        # Embedded mock orders
 ```
 
-## Roadmap ideas
-- Add richer order details (line items, receipts)
-- Track live order status
-- Add `watch` command with refresh interval
-- Add `export` (JSON/CSV)
-- Add `swiggy` client behind the same interface
 
 ## Disclaimer
 This is an **unofficial** project and is **not affiliated with Zomato**. Please don't sue me 🙏  
 Using cookies or reverse-engineered endpoints may violate terms of service. Use at your own risk.
 
-## Releasing (GoReleaser + Homebrew)
-This repo uses GoReleaser to publish binaries and update the Homebrew tap at `maheshrijal/homebrew-tap`.
-
-One-time setup:
-1. Create the tap repo: `github.com/maheshrijal/homebrew-tap`
-2. Add a repo-scoped token with access to the tap as a GitHub secret on this repo:
-   - `HOMEBREW_TAP_GITHUB_TOKEN`
-
-Release flow:
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-Users can install with:
+Install with:
 ```bash
 brew install maheshrijal/tap/zocli
 ```
-
-## Contributing
-See `CONTRIBUTING.md`.

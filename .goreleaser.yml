@@ -40,7 +40,7 @@ brews:
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     commit_author:
       name: Mahesh Rijal
-      email: maheshrijal@users.noreply.github.com
+      email: 62394512+maheshrijal@users.noreply.github.com
     test: |
       system "#{bin}/zocli", "version"
     install: |

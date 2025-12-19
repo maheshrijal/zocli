@@ -10,44 +10,28 @@ brew install maheshrijal/tap/zocli
 ```
 
 ## What this is
-- A Go CLI for Zomato to check order history, spent amount, tracking etc. 
+- A Go CLI for Zomato to check order history, spent amount, tracking etc.
 
 ## What this is not
 - An official Zomato integration
 - A stable API client
 - A guarantee of ToS compliance
 
-## Quick start
-
-## Auth without copy/paste (recommended)
+## Auth
 
 ```bash
 ./zocli auth login
 ```
 
-This opens a real Chrome window. Log in to Zomato and the CLI will detect it and store cookies automatically.
-
-## Auth using an existing browser profile
-
-If you're already logged in in Chrome, reuse that profile:
-
 ```bash
 ./zocli auth login --browser chrome --profile "Default"
 ```
-
-## Import cookies from a browser profile (no UI)
-
-This reads cookies directly from your browser profile:
 
 ```bash
 ./zocli auth import --browser chrome --profile "Default"
 ```
 
-## Using your own cookie (manual, unofficial)
-1. Open Zomato in your browser and log in.
-2. Open DevTools → Network.
-3. Copy the `Cookie` header from any authenticated request.
-4. Save it:
+Manual cookie (if you must):
 
 ```bash
 ./zocli auth --cookie "<cookie header>"
@@ -91,8 +75,3 @@ internal/sample        # Embedded mock orders
 ## Disclaimer
 This is an **unofficial** project and is **not affiliated with Zomato**. Please don't sue me 🙏  
 Using cookies or reverse-engineered endpoints may violate terms of service. Use at your own risk.
-
-Install with:
-```bash
-brew install maheshrijal/tap/zocli
-```

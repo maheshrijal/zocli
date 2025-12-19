@@ -1,6 +1,13 @@
 # zocli
 
-Unofficial CLI for tracking Zomato orders (personal use, community tinkering). This project is intentionally small and hackable so other developers can plug in their own API discovery work.
+A tiny CLI to view and analyze your Zomato order history.
+
+## Install with Homebrew
+
+```bash
+brew tap maheshrijal/tap
+brew install maheshrijal/tap/zocli
+```
 
 ## What this is
 - A Go CLI scaffold with a **config store**, **local cache**, and **table output**
@@ -45,13 +52,6 @@ Then sync:
 
 ```bash
 ./zocli sync
-```
-
-## Install with Homebrew
-
-```bash
-brew tap maheshrijal/tap
-brew install maheshrijal/tap/zocli
 ```
 
 ## Commands

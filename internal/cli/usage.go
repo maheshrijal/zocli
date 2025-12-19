@@ -23,6 +23,7 @@ Commands:
 Examples:
   zocli auth login
   zocli auth import --browser chrome
+  zocli auth logout
   zocli auth status
   zocli auth --cookie "<cookie header>"
   zocli sync --mock

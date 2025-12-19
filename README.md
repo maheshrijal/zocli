@@ -46,6 +46,7 @@ Then sync:
 ## Commands
 
 - `auth` — Save your Zomato cookie for future requests
+- `auth logout` — Clear the saved cookie
 - `auth status` — Check whether your saved cookie is still valid
 - `sync` — Fetch orders and store locally (or `--mock`)
 - `orders` — List stored orders

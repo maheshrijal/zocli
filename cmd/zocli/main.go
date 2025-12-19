@@ -55,6 +55,8 @@ func runAuth(args []string) error {
 			return runAuthLogin(args[1:])
 		case "import":
 			return runAuthImport(args[1:])
+		case "logout":
+			return runAuthLogout(args[1:])
 		case "status":
 			return runAuthStatus(args[1:])
 		}
@@ -156,6 +158,25 @@ func runAuthStatus(args []string) error {
 		return nil
 	}
 	fmt.Println("Not logged in (cookie invalid or expired). Run `zocli auth login`.")
+	return nil
+}
+
+func runAuthLogout(args []string) error {
+	fs := flag.NewFlagSet("auth logout", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	cfgPath, err := config.DefaultPath()
+	if err != nil {
+		return err
+	}
+
+	if err := config.Save(cfgPath, config.Config{Cookie: ""}); err != nil {
+		return err
+	}
+	fmt.Println("Logged out (saved cookie cleared).")
 	return nil
 }
 

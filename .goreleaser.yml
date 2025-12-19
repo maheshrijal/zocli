@@ -39,8 +39,8 @@ brews:
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     commit_author:
-      name: goreleaser
-      email: goreleaser@github.com
+      name: Mahesh Rijal
+      email: 62394512+maheshrijal@users.noreply.github.com
     test: |
       system "#{bin}/zocli", "version"
     install: |

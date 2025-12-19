@@ -2,6 +2,13 @@
 
 A tiny CLI to view and analyze your Zomato order history.
 
+## Install with Homebrew
+
+```bash
+brew tap maheshrijal/tap
+brew install maheshrijal/tap/zocli
+```
+
 ## What this is
 - A Go CLI for Zomato to check order history, spent amount, tracking etc. 
 

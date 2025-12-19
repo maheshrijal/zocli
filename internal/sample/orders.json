@@ -1,0 +1,24 @@
+[
+  {
+    "id": "ZOM123456",
+    "restaurant": "Bombay Bites",
+    "status": "Delivered",
+    "placed_at": "2025-12-18T20:12:00-08:00",
+    "total": "₹420",
+    "items": [
+      {"name": "Paneer Tikka", "quantity": 1},
+      {"name": "Butter Naan", "quantity": 2}
+    ]
+  },
+  {
+    "id": "ZOM123789",
+    "restaurant": "Dosa Corner",
+    "status": "Preparing",
+    "placed_at": "2025-12-19T12:05:00-08:00",
+    "total": "₹260",
+    "items": [
+      {"name": "Masala Dosa", "quantity": 1},
+      {"name": "Filter Coffee", "quantity": 1}
+    ]
+  }
+]

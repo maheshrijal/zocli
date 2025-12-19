@@ -1,0 +1,47 @@
+version: 2
+
+project_name: zocli
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: zocli
+    main: ./cmd/zocli
+    binary: zocli
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format: tar.gz
+
+checksum:
+  name_template: checksums.txt
+
+brews:
+  - name: zocli
+    directory: Formula
+    homepage: https://github.com/maheshrijal/zocli
+    description: Unofficial Zomato order tracker CLI
+    license: MIT
+    repository:
+      owner: maheshrijal
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaser
+      email: goreleaser@github.com
+    test: |
+      system "#{bin}/zocli", "version"
+    install: |
+      bin.install "zocli"

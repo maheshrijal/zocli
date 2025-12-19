@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -16,18 +18,68 @@ import (
 	"github.com/maheshrijal/zocli/internal/config"
 )
 
+type LoginOptions struct {
+	Headless    bool
+	Browser     string
+	UserDataDir string
+	ProfileDir  string
+	SkipWait    bool
+}
+
 func LoginAndSaveCookie(ctx context.Context, cfgPath string, headless bool) error {
+	return LoginAndSaveCookieWithOptions(ctx, cfgPath, LoginOptions{
+		Headless: headless,
+		Browser:  "chrome",
+	})
+}
+
+func LoginAndSaveCookieWithOptions(ctx context.Context, cfgPath string, opts LoginOptions) error {
+	return captureCookie(ctx, cfgPath, opts)
+}
+
+func ImportFromBrowser(ctx context.Context, cfgPath string, opts LoginOptions) error {
+	opts.SkipWait = true
+	if opts.Browser == "" {
+		opts.Browser = "chrome"
+	}
+	if opts.ProfileDir == "" {
+		opts.ProfileDir = "Default"
+	}
+	if opts.UserDataDir == "" {
+		if path, err := defaultUserDataDir(opts.Browser); err == nil {
+			opts.UserDataDir = path
+		}
+	}
+	return captureCookie(ctx, cfgPath, opts)
+}
+
+func captureCookie(ctx context.Context, cfgPath string, opts LoginOptions) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
-	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", headless),
+	userDataDir := opts.UserDataDir
+	if userDataDir == "" && opts.ProfileDir != "" {
+		path, err := defaultUserDataDir(opts.Browser)
+		if err != nil {
+			return err
+		}
+		userDataDir = path
+	}
+
+	execOpts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", opts.Headless),
 		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("no-first-run", true),
 		chromedp.Flag("no-default-browser-check", true),
 	)
+	if userDataDir != "" {
+		execOpts = append(execOpts, chromedp.UserDataDir(userDataDir))
+	}
+	if opts.ProfileDir != "" {
+		execOpts = append(execOpts, chromedp.Flag("profile-directory", opts.ProfileDir))
+	}
 
-	allocCtx, cancel := chromedp.NewExecAllocator(ctx, opts...)
+	allocCtx, cancel := chromedp.NewExecAllocator(ctx, execOpts...)
 	defer cancel()
 
 	browserCtx, cancel := chromedp.NewContext(allocCtx)
@@ -35,30 +87,39 @@ func LoginAndSaveCookie(ctx context.Context, cfgPath string, headless bool) erro
 
 	if err := chromedp.Run(browserCtx,
 		chromedp.Navigate("https://www.zomato.com/restaurants"),
-		chromedp.Evaluate(`(() => {
-			const el = Array.from(document.querySelectorAll('a, button, div, span'))
-				.find(e => (e.textContent || '').trim().toLowerCase() === 'log in');
-			if (!el) return false;
-			el.click();
-			return true;
-		})()`, nil),
-		chromedp.Sleep(500*time.Millisecond),
 	); err != nil {
 		return err
 	}
 
-	fmt.Println("A browser window should be open.")
-	fmt.Println("If the login modal isn't open, click “Log in” on the page.")
-	fmt.Println("Log in to Zomato there. This will continue once login is detected.")
+	if opts.SkipWait {
+		fmt.Println("Reading cookies from the selected browser profile...")
+	} else {
+		if err := chromedp.Run(browserCtx,
+			chromedp.Evaluate(`(() => {
+				const el = Array.from(document.querySelectorAll('a, button, div, span'))
+					.find(e => (e.textContent || '').trim().toLowerCase() === 'log in');
+				if (!el) return false;
+				el.click();
+				return true;
+			})()`, nil),
+			chromedp.Sleep(500*time.Millisecond),
+		); err != nil {
+			return err
+		}
 
-	if err := waitForLogin(browserCtx); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			fmt.Println("Login timed out. Press Enter to capture cookies anyway, or Ctrl+C to cancel.")
-			if _, err := bufio.NewReader(os.Stdin).ReadString('\n'); err != nil {
+		fmt.Println("A browser window should be open.")
+		fmt.Println("If the login modal isn't open, click “Log in” on the page.")
+		fmt.Println("Log in to Zomato there. This will continue once login is detected.")
+
+		if err := waitForLogin(browserCtx); err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				fmt.Println("Login timed out. Press Enter to capture cookies anyway, or Ctrl+C to cancel.")
+				if _, err := bufio.NewReader(os.Stdin).ReadString('\n'); err != nil {
+					return err
+				}
+			} else {
 				return err
 			}
-		} else {
-			return err
 		}
 	}
 
@@ -73,6 +134,9 @@ func LoginAndSaveCookie(ctx context.Context, cfgPath string, headless bool) erro
 
 	cookieHeader := buildCookieHeader(cookies)
 	if cookieHeader == "" {
+		if opts.SkipWait {
+			return errors.New("no zomato cookies found; make sure the selected profile is logged in and Chrome is closed")
+		}
 		return errors.New("no zomato cookies found; make sure you logged in in the opened browser")
 	}
 
@@ -135,4 +199,58 @@ func buildCookieHeader(cookies []*network.Cookie) string {
 	}
 	sort.Strings(pairs)
 	return strings.Join(pairs, "; ")
+}
+
+func defaultUserDataDir(browser string) (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	name := strings.ToLower(strings.TrimSpace(browser))
+	if name == "" || name == "chrome" || name == "google-chrome" {
+		name = "chrome"
+	}
+
+	switch runtime.GOOS {
+	case "darwin":
+		switch name {
+		case "chrome":
+			return filepath.Join(home, "Library/Application Support/Google/Chrome"), nil
+		case "chromium":
+			return filepath.Join(home, "Library/Application Support/Chromium"), nil
+		case "brave":
+			return filepath.Join(home, "Library/Application Support/BraveSoftware/Brave-Browser"), nil
+		case "edge":
+			return filepath.Join(home, "Library/Application Support/Microsoft Edge"), nil
+		}
+	case "linux":
+		base := filepath.Join(home, ".config")
+		switch name {
+		case "chrome":
+			return filepath.Join(base, "google-chrome"), nil
+		case "chromium":
+			return filepath.Join(base, "chromium"), nil
+		case "brave":
+			return filepath.Join(base, "BraveSoftware/Brave-Browser"), nil
+		case "edge":
+			return filepath.Join(base, "microsoft-edge"), nil
+		}
+	case "windows":
+		local := os.Getenv("LOCALAPPDATA")
+		if local == "" {
+			return "", errors.New("LOCALAPPDATA not set")
+		}
+		switch name {
+		case "chrome":
+			return filepath.Join(local, "Google", "Chrome", "User Data"), nil
+		case "chromium":
+			return filepath.Join(local, "Chromium", "User Data"), nil
+		case "brave":
+			return filepath.Join(local, "BraveSoftware", "Brave-Browser", "User Data"), nil
+		case "edge":
+			return filepath.Join(local, "Microsoft", "Edge", "User Data"), nil
+		}
+	}
+
+	return "", fmt.Errorf("unknown browser %q; use --user-data-dir", browser)
 }

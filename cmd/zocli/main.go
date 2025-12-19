@@ -53,6 +53,8 @@ func runAuth(args []string) error {
 		switch args[0] {
 		case "login":
 			return runAuthLogin(args[1:])
+		case "import":
+			return runAuthImport(args[1:])
 		case "status":
 			return runAuthStatus(args[1:])
 		}
@@ -95,6 +97,9 @@ func runAuthLogin(args []string) error {
 	fs := flag.NewFlagSet("auth login", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	headless := fs.Bool("headless", false, "Run Chrome in headless mode (not recommended for login)")
+	browser := fs.String("browser", "chrome", "Browser profile to use (chrome, chromium, brave, edge)")
+	userDataDir := fs.String("user-data-dir", "", "Path to browser user data dir (uses default if profile is set)")
+	profile := fs.String("profile", "", "Browser profile directory name (e.g. Default, Profile 1)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -104,7 +109,12 @@ func runAuthLogin(args []string) error {
 		return err
 	}
 
-	return auth.LoginAndSaveCookie(context.Background(), cfgPath, *headless)
+	return auth.LoginAndSaveCookieWithOptions(context.Background(), cfgPath, auth.LoginOptions{
+		Headless:    *headless,
+		Browser:     *browser,
+		UserDataDir: *userDataDir,
+		ProfileDir:  *profile,
+	})
 }
 
 func runAuthStatus(args []string) error {
@@ -147,6 +157,30 @@ func runAuthStatus(args []string) error {
 	}
 	fmt.Println("Not logged in (cookie invalid or expired). Run `zocli auth login`.")
 	return nil
+}
+
+func runAuthImport(args []string) error {
+	fs := flag.NewFlagSet("auth import", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	headless := fs.Bool("headless", true, "Run Chrome in headless mode (default true)")
+	browser := fs.String("browser", "chrome", "Browser profile to read (chrome, chromium, brave, edge)")
+	userDataDir := fs.String("user-data-dir", "", "Path to browser user data dir (default for --browser)")
+	profile := fs.String("profile", "Default", "Browser profile directory name")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	cfgPath, err := config.DefaultPath()
+	if err != nil {
+		return err
+	}
+
+	return auth.ImportFromBrowser(context.Background(), cfgPath, auth.LoginOptions{
+		Headless:    *headless,
+		Browser:     *browser,
+		UserDataDir: *userDataDir,
+		ProfileDir:  *profile,
+	})
 }
 
 func runSync(args []string) error {

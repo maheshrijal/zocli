@@ -27,6 +27,22 @@ brew install maheshrijal/tap/zocli
 
 This opens a real Chrome window. Log in to Zomato and the CLI will detect it and store cookies automatically.
 
+## Auth using an existing browser profile
+
+If you're already logged in in Chrome, reuse that profile:
+
+```bash
+./zocli auth login --browser chrome --profile "Default"
+```
+
+## Import cookies from a browser profile (no UI)
+
+This reads cookies directly from your browser profile:
+
+```bash
+./zocli auth import --browser chrome --profile "Default"
+```
+
 ## Using your own cookie (manual, unofficial)
 1. Open Zomato in your browser and log in.
 2. Open DevTools → Network.

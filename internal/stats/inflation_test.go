@@ -13,17 +13,16 @@ func TestCalculateInflation(t *testing.T) {
 	t3 := time.Date(2023, 3, 1, 10, 0, 0, 0, time.UTC)
 
 	orders := []zomato.Order{
-		// Match 1: Pizza, Price 100
-		{ID: "1", PlacedAt: t1, Status: "Delivered", Total: "₹100", Items: []zomato.OrderItem{{Name: "Cheese Pizza", Quantity: 1}}},
-		
-		// Multi-item (Should be ignored)
-		{ID: "2", PlacedAt: t2, Status: "Delivered", Total: "₹250", Items: []zomato.OrderItem{{Name: "Cheese Pizza", Quantity: 1}, {Name: "Coke", Quantity: 1}}},
-		
-		// Match 2: Pizza, Price 120 (Inflation +20%) to check rounding logic
-		{ID: "3", PlacedAt: t3, Status: "Delivered", Total: "₹240", Items: []zomato.OrderItem{{Name: "Cheese Pizza", Quantity: 2}}},
-	
-		// No Match
-		{ID: "4", PlacedAt: t3, Status: "Delivered", Total: "₹50", Items: []zomato.OrderItem{{Name: "Garlic Bread", Quantity: 1}}},
+		// Match 1: Pizza, Price 100 @ Dominos
+		{ID: "1", Restaurant: "Dominos", PlacedAt: t1, Status: "Delivered", Total: "₹100", Items: []zomato.OrderItem{{Name: "Cheese Pizza", Quantity: 1}}},
+
+		// Match 2: Pizza, Price 120 @ Dominos (Inflation +20%)
+		{ID: "3", Restaurant: "Dominos", PlacedAt: t3, Status: "Delivered", Total: "₹240", Items: []zomato.OrderItem{{Name: "Cheese Pizza", Quantity: 2}}},
+
+		// Match 3: Pizza, Price 500 @ PizzaHut (Should NOT compare with Dominos)
+		// 100 -> 120 (Dominos)
+		// 500 (PizzaHut, New Chain) -> Change should be 0 because it's the first time seeing PizzaHut
+		{ID: "5", Restaurant: "PizzaHut", PlacedAt: t2, Status: "Delivered", Total: "₹500", Items: []zomato.OrderItem{{Name: "Cheese Pizza", Quantity: 1}}},
 	}
 
 	points, err := CalculateInflation(orders, "Pizza")
@@ -31,23 +30,61 @@ func TestCalculateInflation(t *testing.T) {
 		t.Fatalf("CalculateInflation failed: %v", err)
 	}
 
-	if len(points) != 2 {
-		t.Fatalf("Got %d points, want 2", len(points))
+	// Should have 3 points: Dominos (x2), PizzaHut (x1)
+	if len(points) != 3 {
+		t.Fatalf("Got %d points, want 3", len(points))
 	}
 
-	p1 := points[0]
-	if p1.UnitPrice != 100.0 {
-		t.Errorf("Point 1 unit price = %f, want 100.0", p1.UnitPrice)
-	}
-	if p1.Change != 0 {
-		t.Errorf("Point 1 change = %f, want 0", p1.Change)
+	// Point 1: Dominos 100
+	if points[0].Restaurant != "Dominos" || points[0].UnitPrice != 100.0 {
+		t.Errorf("P1 mismatch: %v", points[0])
 	}
 
-	p2 := points[1]
-	if p2.UnitPrice != 120.0 {
-		t.Errorf("Point 2 unit price = %f, want 120.0 (240/2)", p2.UnitPrice)
+	// Point 2: PizzaHut 500 (Date is t2, so it comes second)
+	// Change should be 0 because it's first time for PizzaHut
+	if points[1].Restaurant != "PizzaHut" || points[1].UnitPrice != 500.0 {
+		t.Errorf("P2 mismatch: %v", points[1])
 	}
-	if p2.Change != 20.0 {
-		t.Errorf("Point 2 change = %f, want 20.0", p2.Change)
+	if points[1].Change != 0 {
+		t.Errorf("P2 change = %f, want 0 (different restaurant)", points[1].Change)
+	}
+
+	// Point 3: Dominos 120 (Date t3)
+	// Change should be calculated against P1 (Dominos 100) -> +20%
+	if points[2].Restaurant != "Dominos" || points[2].UnitPrice != 120.0 {
+		t.Errorf("P3 mismatch: %v", points[2])
+	}
+	if points[2].Change != 20.0 {
+		t.Errorf("P3 change = %f, want 20.0", points[2].Change)
+	}
+}
+
+func TestFindTopInflationTrends(t *testing.T) {
+	t1 := time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC)
+	t2 := time.Date(2023, 2, 1, 10, 0, 0, 0, time.UTC)
+
+	orders := []zomato.Order{
+		// Trend 1: Burger @ McD (2 orders) -> VALID
+		{ID: "1", Restaurant: "McD", PlacedAt: t1, Status: "Delivered", Total: "₹50", Items: []zomato.OrderItem{{Name: "Burger", Quantity: 1}}},
+		{ID: "2", Restaurant: "McD", PlacedAt: t2, Status: "Delivered", Total: "₹60", Items: []zomato.OrderItem{{Name: "Burger", Quantity: 1}}},
+
+		// Trend 2: Pizza @ Dominos (1 order) -> INVALID (need >=2)
+		{ID: "3", Restaurant: "Dominos", PlacedAt: t1, Status: "Delivered", Total: "₹100", Items: []zomato.OrderItem{{Name: "Pizza", Quantity: 1}}},
+		
+		// Trend 3: Pizza @ PizzaHut (1 order) -> INVALID (need >=2)
+		{ID: "4", Restaurant: "PizzaHut", PlacedAt: t1, Status: "Delivered", Total: "₹100", Items: []zomato.OrderItem{{Name: "Pizza", Quantity: 1}}},
+	}
+
+	trends := FindTopInflationTrends(orders, 5)
+
+	if len(trends) != 1 {
+		t.Fatalf("Got %d trends, want 1 (only McD has history)", len(trends))
+	}
+
+	if trends[0].Restaurant != "McD" {
+		t.Errorf("Expected McD, got %s", trends[0].Restaurant)
+	}
+	if trends[0].TotalChange != 20.0 {
+		t.Errorf("Expected 20%% change, got %f", trends[0].TotalChange)
 	}
 }

@@ -353,9 +353,24 @@ func runSync(args []string) error {
 	}
 
 	client := zomato.NewClient(cfg.Cookie)
-	orders, err := client.FetchOrders(context.Background())
+	terminal := isTerminal(os.Stdout)
+	progress := func(p zomato.FetchProgress) {
+		total := "?"
+		if p.TotalPages > 0 {
+			total = fmt.Sprintf("%d", p.TotalPages)
+		}
+		if terminal {
+			fmt.Fprintf(os.Stdout, "\rFetched page %d/%s (orders: %d)", p.Page, total, p.TotalOrders)
+		} else {
+			fmt.Fprintf(os.Stdout, "Fetched page %d/%s (orders: %d)\n", p.Page, total, p.TotalOrders)
+		}
+	}
+	orders, err := client.FetchOrdersWithProgress(context.Background(), progress)
 	if err != nil {
 		return err
+	}
+	if terminal {
+		fmt.Fprintln(os.Stdout)
 	}
 	if err := st.Save(orders); err != nil {
 		return err
@@ -538,4 +553,12 @@ func must(err error) {
 	}
 	fmt.Fprintln(os.Stderr, "Error:", err)
 	os.Exit(1)
+}
+
+func isTerminal(f *os.File) bool {
+	info, err := f.Stat()
+	if err != nil {
+		return false
+	}
+	return (info.Mode() & os.ModeCharDevice) != 0
 }

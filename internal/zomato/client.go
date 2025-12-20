@@ -27,6 +27,17 @@ func NewClient(cookie string) *Client {
 }
 
 func (c *Client) FetchOrders(ctx context.Context) ([]Order, error) {
+	return c.FetchOrdersWithProgress(ctx, nil)
+}
+
+type FetchProgress struct {
+	Page        int
+	TotalPages  int
+	NewOrders   int
+	TotalOrders int
+}
+
+func (c *Client) FetchOrdersWithProgress(ctx context.Context, progress func(FetchProgress)) ([]Order, error) {
 	var all []Order
 	page := 1
 	seen := map[string]struct{}{}
@@ -53,6 +64,14 @@ func (c *Client) FetchOrders(ctx context.Context) ([]Order, error) {
 		}
 
 		totalPages := resp.Sections.OrderHistory.TotalPages
+		if progress != nil {
+			progress(FetchProgress{
+				Page:        page,
+				TotalPages:  totalPages,
+				NewOrders:   newCount,
+				TotalOrders: len(all),
+			})
+		}
 		if newCount == 0 {
 			break
 		}

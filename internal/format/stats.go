@@ -42,6 +42,71 @@ func StatsGroups(w io.Writer, groups []stats.Group, currency string) {
 	writeBoxTable(w, headers, rows, alignRight)
 }
 
+func StatsBuckets(w io.Writer, headers []string, rows [][]string, alignRight []bool) {
+	if len(rows) == 0 {
+		fmt.Fprintln(w, "No data to display.")
+		return
+	}
+	writeBoxTable(w, headers, rows, alignRight)
+}
+
+func StatsWeekdayOrders(w io.Writer, buckets []stats.Bucket) {
+	headers := []string{"Day", "Orders", "Share"}
+	rows := make([][]string, 0, len(buckets))
+	for _, bucket := range buckets {
+		rows = append(rows, []string{
+			bucket.Key,
+			fmt.Sprintf("%d", bucket.Count),
+			fmt.Sprintf("%.1f%%", bucket.Percent),
+		})
+	}
+	alignRight := []bool{false, true, true}
+	StatsBuckets(w, headers, rows, alignRight)
+}
+
+func StatsTimeWindows(w io.Writer, buckets []stats.Bucket) {
+	headers := []string{"Window", "Orders", "Share"}
+	rows := make([][]string, 0, len(buckets))
+	for _, bucket := range buckets {
+		rows = append(rows, []string{
+			bucket.Key,
+			fmt.Sprintf("%d", bucket.Count),
+			fmt.Sprintf("%.1f%%", bucket.Percent),
+		})
+	}
+	alignRight := []bool{false, true, true}
+	StatsBuckets(w, headers, rows, alignRight)
+}
+
+func StatsTopList(w io.Writer, title string, buckets []stats.Bucket) {
+	headers := []string{title, "Orders", "Share"}
+	rows := make([][]string, 0, len(buckets))
+	for _, bucket := range buckets {
+		rows = append(rows, []string{
+			bucket.Key,
+			fmt.Sprintf("%d", bucket.Count),
+			fmt.Sprintf("%.1f%%", bucket.Percent),
+		})
+	}
+	alignRight := []bool{false, true, true}
+	StatsBuckets(w, headers, rows, alignRight)
+}
+
+func StatsSpendByWeekday(w io.Writer, buckets []stats.SpendBucket, currency string) {
+	headers := []string{"Day", "Orders", "Total", "Average"}
+	rows := make([][]string, 0, len(buckets))
+	for _, bucket := range buckets {
+		rows = append(rows, []string{
+			bucket.Key,
+			fmt.Sprintf("%d", bucket.Count),
+			formatCurrency(currency, bucket.Total),
+			formatCurrency(currency, bucket.Average),
+		})
+	}
+	alignRight := []bool{false, true, true, true}
+	StatsBuckets(w, headers, rows, alignRight)
+}
+
 func writeBoxTable(w io.Writer, headers []string, rows [][]string, alignRight []bool) {
 	columns := len(headers)
 	widths := make([]int, columns)

@@ -37,6 +37,9 @@ Manual cookie (if you must):
 ./zocli auth --cookie "<cookie header>"
 ```
 
+If your browser isn't listed, pass its profile path with `--user-data-dir`.
+If import still fails, pass the browser binary with `--browser-path`.
+
 Then sync:
 
 ```bash
@@ -57,6 +60,14 @@ Example:
 
 ```bash
 ./zocli stats --group year
+```
+
+More views:
+
+```bash
+./zocli stats --view patterns
+./zocli stats --view personal
+./zocli stats --view spend
 ```
 
 ## Project layout

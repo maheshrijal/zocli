@@ -28,6 +28,19 @@ type Group struct {
 	Average float64
 }
 
+type Bucket struct {
+	Key     string
+	Count   int
+	Percent float64
+}
+
+type SpendBucket struct {
+	Key     string
+	Count   int
+	Total   float64
+	Average float64
+}
+
 func ComputeSummary(orders []zomato.Order) Summary {
 	var total float64
 	var currency string
@@ -104,6 +117,187 @@ func GroupOrders(orders []zomato.Order, groupBy string) ([]Group, error) {
 	return out, nil
 }
 
+func OrdersByWeekday(orders []zomato.Order) []Bucket {
+	counts := make(map[time.Weekday]int)
+	total := 0
+	for _, order := range orders {
+		if order.PlacedAt.IsZero() {
+			continue
+		}
+		counts[order.PlacedAt.Weekday()]++
+		total++
+	}
+	out := make([]Bucket, 0, 7)
+	for _, day := range []time.Weekday{
+		time.Monday,
+		time.Tuesday,
+		time.Wednesday,
+		time.Thursday,
+		time.Friday,
+		time.Saturday,
+		time.Sunday,
+	} {
+		count := counts[day]
+		out = append(out, Bucket{
+			Key:     day.String(),
+			Count:   count,
+			Percent: percent(count, total),
+		})
+	}
+	return out
+}
+
+func OrdersByTimeWindow(orders []zomato.Order) []Bucket {
+	type window struct {
+		Label string
+		Start int
+		End   int
+	}
+	windows := []window{
+		{Label: "Late night (00-05)", Start: 0, End: 6},
+		{Label: "Morning (06-11)", Start: 6, End: 12},
+		{Label: "Afternoon (12-17)", Start: 12, End: 18},
+		{Label: "Evening (18-23)", Start: 18, End: 24},
+	}
+	counts := make([]int, len(windows))
+	total := 0
+	for _, order := range orders {
+		if order.PlacedAt.IsZero() {
+			continue
+		}
+		hour := order.PlacedAt.Hour()
+		for i, win := range windows {
+			if hour >= win.Start && hour < win.End {
+				counts[i]++
+				total++
+				break
+			}
+		}
+	}
+	out := make([]Bucket, 0, len(windows))
+	for i, win := range windows {
+		out = append(out, Bucket{
+			Key:     win.Label,
+			Count:   counts[i],
+			Percent: percent(counts[i], total),
+		})
+	}
+	return out
+}
+
+func SpendByWeekday(orders []zomato.Order) []SpendBucket {
+	buckets := make(map[time.Weekday]*SpendBucket)
+	for _, order := range orders {
+		if order.PlacedAt.IsZero() {
+			continue
+		}
+		amount, _ := parseAmount(order.Total)
+		day := order.PlacedAt.Weekday()
+		entry, ok := buckets[day]
+		if !ok {
+			entry = &SpendBucket{Key: day.String()}
+			buckets[day] = entry
+		}
+		entry.Count++
+		entry.Total += amount
+	}
+
+	out := make([]SpendBucket, 0, 7)
+	for _, day := range []time.Weekday{
+		time.Monday,
+		time.Tuesday,
+		time.Wednesday,
+		time.Thursday,
+		time.Friday,
+		time.Saturday,
+		time.Sunday,
+	} {
+		entry := buckets[day]
+		if entry == nil {
+			entry = &SpendBucket{Key: day.String()}
+		}
+		if entry.Count > 0 {
+			entry.Average = entry.Total / float64(entry.Count)
+		}
+		out = append(out, *entry)
+	}
+	return out
+}
+
+func TopRestaurants(orders []zomato.Order, limit int) []Bucket {
+	if limit <= 0 {
+		limit = 5
+	}
+	counts := map[string]int{}
+	total := 0
+	for _, order := range orders {
+		name := strings.TrimSpace(order.Restaurant)
+		if name == "" {
+			name = "Unknown"
+		}
+		counts[name]++
+		total++
+	}
+	out := make([]Bucket, 0, len(counts))
+	for name, count := range counts {
+		out = append(out, Bucket{
+			Key:     name,
+			Count:   count,
+			Percent: percent(count, total),
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Count == out[j].Count {
+			return out[i].Key < out[j].Key
+		}
+		return out[i].Count > out[j].Count
+	})
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out
+}
+
+func TopItems(orders []zomato.Order, limit int) []Bucket {
+	if limit <= 0 {
+		limit = 5
+	}
+	counts := map[string]int{}
+	total := 0
+	for _, order := range orders {
+		for _, item := range order.Items {
+			name := strings.TrimSpace(item.Name)
+			if name == "" {
+				continue
+			}
+			qty := item.Quantity
+			if qty <= 0 {
+				qty = 1
+			}
+			counts[name] += qty
+			total += qty
+		}
+	}
+	out := make([]Bucket, 0, len(counts))
+	for name, count := range counts {
+		out = append(out, Bucket{
+			Key:     name,
+			Count:   count,
+			Percent: percent(count, total),
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Count == out[j].Count {
+			return out[i].Key < out[j].Key
+		}
+		return out[i].Count > out[j].Count
+	})
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out
+}
+
 func groupKey(ts time.Time, groupBy string) string {
 	if groupBy == "none" {
 		return "all"
@@ -144,6 +338,13 @@ func sortGroups(groups []Group, groupBy string) {
 		}
 		return ai.Key < bi.Key
 	})
+}
+
+func percent(value, total int) float64 {
+	if total == 0 {
+		return 0
+	}
+	return (float64(value) / float64(total)) * 100
 }
 
 var amountPattern = regexp.MustCompile(`[0-9]+(?:[.,][0-9]+)?`)

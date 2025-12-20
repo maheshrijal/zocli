@@ -23,3 +23,7 @@ tidy:
 .PHONY: clean
 clean:
 	@rm -rf $(BIN_DIR)
+
+.PHONY: test
+test:
+	go test -v ./...

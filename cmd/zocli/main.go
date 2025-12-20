@@ -63,6 +63,8 @@ func main() {
 		must(runStats(os.Args[2:]))
 	case "config":
 		must(runConfig(os.Args[2:]))
+	case "inflation":
+		must(runInflation(os.Args[2:]))
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", os.Args[1])
 		cli.PrintUsage(os.Stderr)
@@ -541,6 +543,82 @@ func runConfig(args []string) error {
 
 	fmt.Printf("Config: %s\n", cfgPath)
 	fmt.Printf("Orders: %s\n", storePath)
+	return nil
+}
+
+func runInflation(args []string) error {
+	storePath, err := store.DefaultPath()
+	if err != nil {
+		return err
+	}
+	st, err := store.New(storePath)
+	if err != nil {
+		return err
+	}
+	orders, err := st.Load()
+	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.New("no stored orders yet; run 'zocli sync' first")
+		}
+		return err
+	}
+
+	// Case 1: Show top 5 items summary if no args
+	if len(args) == 0 {
+		// Fetch top 50 items to have enough candidates even after filtering mixed orders
+		topItems := stats.TopItems(orders, 50)
+		var summaries []format.InflationSummary
+
+		for _, item := range topItems {
+			if len(summaries) >= 5 {
+				break
+			}
+
+			points, err := stats.CalculateInflation(orders, item.Key)
+			if err != nil || len(points) < 2 {
+				continue
+			}
+			
+			first := points[0]
+			last := points[len(points)-1]
+			
+			// Calculate total change
+			change := 0.0
+			if first.UnitPrice > 0 {
+				change = ((last.UnitPrice - first.UnitPrice) / first.UnitPrice) * 100
+			}
+
+			summaries = append(summaries, format.InflationSummary{
+				ItemName:    item.Key,
+				FirstSeen:   first.Date.Format("2006-01-02"),
+				FirstPrice:  first.UnitPrice,
+				LastPrice:   last.UnitPrice,
+				TotalChange: change,
+			})
+		}
+		
+		fmt.Println("Top Inflation Trends (Most Ordered Items)")
+		format.InflationSummaryTable(os.Stdout, summaries)
+		fmt.Println("\nTip: Run 'zocli inflation <item name>' for detailed history.")
+		return nil
+	}
+	
+	query := strings.Join(args, " ")
+	if strings.HasPrefix(query, "-") {
+		if query == "--help" || query == "-h" {
+			fmt.Fprintln(os.Stdout, "Usage: zocli inflation [item name]")
+			fmt.Fprintln(os.Stdout, "  No args: Shows trend summary for top 5 most ordered items.")
+			fmt.Fprintln(os.Stdout, "  Arg: Shows detailed price history for matching items.")
+			return nil
+		}
+	}
+
+	points, err := stats.CalculateInflation(orders, query)
+	if err != nil {
+		return err
+	}
+
+	format.InflationTable(os.Stdout, points)
 	return nil
 }
 

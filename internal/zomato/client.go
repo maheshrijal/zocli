@@ -41,7 +41,6 @@ func (c *Client) FetchOrdersWithProgress(ctx context.Context, progress func(Fetc
 	var all []Order
 	page := 1
 	seen := map[string]struct{}{}
-	const maxPages = 50
 
 	for {
 		resp, err := c.fetchOrdersPage(ctx, page)
@@ -76,9 +75,6 @@ func (c *Client) FetchOrdersWithProgress(ctx context.Context, progress func(Fetc
 			break
 		}
 		if totalPages == 0 || page >= totalPages {
-			break
-		}
-		if page >= maxPages {
 			break
 		}
 		time.Sleep(500 * time.Millisecond)
@@ -256,7 +252,7 @@ func parseOrderDate(input string) time.Time {
 	return time.Time{}
 }
 
-var dishQtyPattern = regexp.MustCompile(`^\\s*(\\d+)\\s*x\\s*(.+)\\s*$`)
+var dishQtyPattern = regexp.MustCompile(`^\s*(\d+)\s*x\s*(.+)\s*$`)
 
 func parseItems(dishString string) []OrderItem {
 	dishString = strings.TrimSpace(dishString)
@@ -264,7 +260,36 @@ func parseItems(dishString string) []OrderItem {
 		return nil
 	}
 
-	parts := strings.Split(dishString, ",")
+	// Split by comma, but respect brackets [] and ()
+	var parts []string
+	var current strings.Builder
+	depth := 0
+	
+	for _, r := range dishString {
+		switch r {
+		case '[', '(':
+			depth++
+			current.WriteRune(r)
+		case ']', ')':
+			if depth > 0 {
+				depth--
+			}
+			current.WriteRune(r)
+		case ',':
+			if depth == 0 {
+				parts = append(parts, current.String())
+				current.Reset()
+			} else {
+				current.WriteRune(r)
+			}
+		default:
+			current.WriteRune(r)
+		}
+	}
+	if current.Len() > 0 {
+		parts = append(parts, current.String())
+	}
+
 	items := make([]OrderItem, 0, len(parts))
 	for _, part := range parts {
 		part = strings.TrimSpace(part)

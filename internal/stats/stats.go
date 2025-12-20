@@ -349,7 +349,7 @@ func percent(value, total int) float64 {
 
 var (
 	amountPattern = regexp.MustCompile(`[0-9]+(?:[.,][0-9]+)?`)
-	moneyPattern  = regexp.MustCompile(`^\s*([^\d.,\s]+)?\s*([\d.,]+)\s*([^\d.,\s]+)?\s*$`)
+	moneyPattern  = regexp.MustCompile(`^\s*([^\d\s]+)?\s*([\d.,]+)\s*([^\d\s]+)?\s*$`)
 )
 
 func parseAmount(input string) (float64, string) {
@@ -372,16 +372,17 @@ func parseAmount(input string) (float64, string) {
 		return value, cur
 	}
 
+	var curBuilder strings.Builder
 	for _, r := range input {
 		if unicode.IsDigit(r) || r == '.' || r == ',' || unicode.IsSpace(r) {
 			continue
 		}
-		currency = string(r)
-		break
+		curBuilder.WriteRune(r)
 	}
+	currency = curBuilder.String()
 	amount := amountPattern.FindString(input)
 	if amount == "" {
-		return 0, normalizeCurrency(currency)
+		return 0, ""
 	}
 	value, cur := parseAmountValue(amount, currency)
 	return value, cur

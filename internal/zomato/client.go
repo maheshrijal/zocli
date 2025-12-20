@@ -41,7 +41,6 @@ func (c *Client) FetchOrdersWithProgress(ctx context.Context, progress func(Fetc
 	var all []Order
 	page := 1
 	seen := map[string]struct{}{}
-	const maxPages = 50
 
 	for {
 		resp, err := c.fetchOrdersPage(ctx, page)
@@ -76,9 +75,6 @@ func (c *Client) FetchOrdersWithProgress(ctx context.Context, progress func(Fetc
 			break
 		}
 		if totalPages == 0 || page >= totalPages {
-			break
-		}
-		if page >= maxPages {
 			break
 		}
 		time.Sleep(500 * time.Millisecond)

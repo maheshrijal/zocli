@@ -46,12 +46,12 @@ Then sync:
 
 <table>
   <tr>
-    <td width="60%" valign="top">
+    <td width="50%" valign="top">
       <img src="assets/Patterns.png" alt="Spending Patterns" width="100%" />
     </td>
-    <td width="40%" valign="top">
+    <td width="50%" valign="top">
       <img src="assets/Stats.png" alt="General Stats" width="100%" />
-      <br/><br/>
+      <br/>
       <img src="assets/Inflation.png" alt="Inflation Tracker" width="100%" />
     </td>
   </tr>

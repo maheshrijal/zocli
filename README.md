@@ -51,11 +51,12 @@ Then sync:
     </td>
     <td width="50%" valign="top">
       <img src="assets/Stats.png" alt="General Stats" width="100%" />
-      <br/>
-      <img src="assets/Inflation.png" alt="Inflation Tracker" width="100%" />
     </td>
   </tr>
 </table>
+<p align="center">
+  <img src="assets/Inflation.png" alt="Inflation Tracker" width="100%" />
+</p>
 
 ```bash
 # View deep spending patterns

@@ -57,6 +57,11 @@ func (m *Model) initOrderTable() {
 func (m *Model) updateTableSize() {
 	m.orderTable.SetWidth(m.width - 2) // Account for borders
 	m.orderTable.SetHeight(m.height - 10) // Leave room for tabs and footer
+	
+	if m.inflationTable.Focused() { // Or just always resize both
+		m.inflationTable.SetWidth(m.width - 2)
+		m.inflationTable.SetHeight(m.height - 10)
+	}
 }
 
 func (m Model) renderTabs() string {

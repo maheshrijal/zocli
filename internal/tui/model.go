@@ -32,7 +32,8 @@ type Model struct {
 	orders  []zomato.Order
 
 	// Components
-	orderTable table.Model
+	orderTable     table.Model
+	inflationTable table.Model
 	
 	// Styles
 	styles Styles
@@ -49,6 +50,7 @@ func NewModel(orders []zomato.Order) Model {
 	}
 	
 	m.initOrderTable()
+	m.initInflationTable()
 	return m
 }
 
@@ -81,6 +83,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Update components based on active tab
 	if m.activeTab == TabOrders {
 		m.orderTable, cmd = m.orderTable.Update(msg)
+		return m, cmd
+	}
+	if m.activeTab == TabInflation {
+		m.inflationTable, cmd = m.inflationTable.Update(msg)
 		return m, cmd
 	}
 
@@ -118,16 +124,4 @@ func (m Model) renderFooter() string {
 
 func itemsString(val float64) string {
 	return fmt.Sprintf("₹%.2f", val)
-}
-
-func (m Model) viewSummary() string {
-	return lipgloss.Place(m.width, m.height-5, lipgloss.Center, lipgloss.Center, 
-		m.styles.Title.Render("Summary Dashboard Coming Soon"),
-	)
-}
-
-func (m Model) viewInflation() string {
-	return lipgloss.Place(m.width, m.height-5, lipgloss.Center, lipgloss.Center,
-		m.styles.Title.Render("Inflation Tracker Coming Soon"),
-	)
 }

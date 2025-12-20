@@ -15,7 +15,10 @@ import (
 	"github.com/maheshrijal/zocli/internal/sample"
 	"github.com/maheshrijal/zocli/internal/stats"
 	"github.com/maheshrijal/zocli/internal/store"
+	"github.com/maheshrijal/zocli/internal/tui"
 	"github.com/maheshrijal/zocli/internal/zomato"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 var version = "dev"
@@ -67,6 +70,8 @@ func main() {
 		must(runInflation(os.Args[2:]))
 	case "debug-api":
 		must(runDebugAPI(os.Args[2:]))
+	case "dash":
+		must(runDash(os.Args[2:]))
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", os.Args[1])
 		cli.PrintUsage(os.Stderr)
@@ -623,6 +628,31 @@ func runDebugAPI(args []string) error {
 		return err
 	}
 	fmt.Println(raw)
+	return nil
+}
+
+func runDash(args []string) error {
+	storePath, err := store.DefaultPath()
+	if err != nil {
+		return err
+	}
+	st, err := store.New(storePath)
+	if err != nil {
+		return err
+	}
+	orders, err := st.Load()
+	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.New("no stored orders yet; run 'zocli sync' first")
+		}
+		return err
+	}
+
+	m := tui.NewModel(orders)
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		return fmt.Errorf("dashboard error: %w", err)
+	}
 	return nil
 }
 

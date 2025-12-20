@@ -14,8 +14,10 @@ Usage:
 Commands:
   auth       Log in / import cookies
   sync       Fetch orders and store locally
+  dash       Interactive dashboard (TUI)
   orders     List stored orders
   stats      Summarize spend
+  inflation  Track unit price history
   config     Show config and data paths
   version    Print version
   help       Help for a command

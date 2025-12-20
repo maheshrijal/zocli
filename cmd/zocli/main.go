@@ -26,6 +26,28 @@ func main() {
 		os.Exit(1)
 	}
 
+	if len(os.Args) > 2 && (os.Args[2] == "help" || os.Args[2] == "-h" || os.Args[2] == "--help") {
+		if !cli.PrintCommandUsage(os.Stdout, os.Args[1]) {
+			fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", os.Args[1])
+			cli.PrintUsage(os.Stderr)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if os.Args[1] == "help" {
+		if len(os.Args) > 2 {
+			if !cli.PrintCommandUsage(os.Stdout, os.Args[2]) {
+				fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", os.Args[2])
+				cli.PrintUsage(os.Stderr)
+				os.Exit(1)
+			}
+			return
+		}
+		cli.PrintUsage(os.Stdout)
+		return
+	}
+
 	switch os.Args[1] {
 	case "help", "-h", "--help":
 		cli.PrintUsage(os.Stdout)
@@ -40,7 +62,7 @@ func main() {
 	case "stats":
 		must(runStats(os.Args[2:]))
 	case "config":
-		must(runConfig())
+		must(runConfig(os.Args[2:]))
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", os.Args[1])
 		cli.PrintUsage(os.Stderr)
@@ -53,17 +75,41 @@ func runAuth(args []string) error {
 		switch args[0] {
 		case "login":
 			return runAuthLogin(args[1:])
+		case "import":
+			return runAuthImport(args[1:])
+		case "logout":
+			return runAuthLogout(args[1:])
 		case "status":
 			return runAuthStatus(args[1:])
+		case "help", "-h", "--help":
+			cli.PrintAuthUsage(os.Stdout)
+			return nil
+		default:
+			if !strings.HasPrefix(args[0], "-") {
+				cli.PrintAuthUsage(os.Stderr)
+				return fmt.Errorf("unknown auth command: %s", args[0])
+			}
 		}
+	}
+
+	if len(args) == 0 {
+		cli.PrintAuthUsage(os.Stdout)
+		return nil
 	}
 
 	fs := flag.NewFlagSet("auth", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	cookie := fs.String("cookie", "", "Zomato Cookie header value")
 	cookieFile := fs.String("cookie-file", "", "Path to a file containing the Cookie header value")
+	fs.Usage = func() {
+		cli.PrintAuthUsage(os.Stderr)
+	}
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if extra := fs.Args(); len(extra) > 0 {
+		cli.PrintAuthUsage(os.Stderr)
+		return fmt.Errorf("unknown arguments: %s", strings.Join(extra, " "))
 	}
 
 	value := strings.TrimSpace(*cookie)
@@ -95,8 +141,36 @@ func runAuthLogin(args []string) error {
 	fs := flag.NewFlagSet("auth login", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	headless := fs.Bool("headless", false, "Run Chrome in headless mode (not recommended for login)")
+	browser := fs.String("browser", "chrome", "Browser profile to use (chrome, chromium, brave, edge, helium, vivaldi)")
+	browserPath := fs.String("browser-path", "", "Path to browser executable (optional)")
+	userDataDir := fs.String("user-data-dir", "", "Path to browser user data dir (uses default if profile is set)")
+	profile := fs.String("profile", "", "Browser profile directory name (e.g. Default, Profile 1)")
+	fs.Usage = func() {
+		cli.PrintAuthLoginUsage(os.Stderr)
+	}
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if extra := fs.Args(); len(extra) > 0 {
+		cli.PrintAuthLoginUsage(os.Stderr)
+		return fmt.Errorf("unknown arguments: %s", strings.Join(extra, " "))
+	}
+
+	var browserSet, userDataDirSet, profileSet, browserPathSet bool
+	fs.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "browser":
+			browserSet = true
+		case "user-data-dir":
+			userDataDirSet = true
+		case "profile":
+			profileSet = true
+		case "browser-path":
+			browserPathSet = true
+		}
+	})
+	if *profile == "" && (browserSet || userDataDirSet || profileSet || browserPathSet) {
+		*profile = "Default"
 	}
 
 	cfgPath, err := config.DefaultPath()
@@ -104,15 +178,28 @@ func runAuthLogin(args []string) error {
 		return err
 	}
 
-	return auth.LoginAndSaveCookie(context.Background(), cfgPath, *headless)
+	return auth.LoginAndSaveCookieWithOptions(context.Background(), cfgPath, auth.LoginOptions{
+		Headless:    *headless,
+		Browser:     *browser,
+		BrowserPath: *browserPath,
+		UserDataDir: *userDataDir,
+		ProfileDir:  *profile,
+	})
 }
 
 func runAuthStatus(args []string) error {
 	fs := flag.NewFlagSet("auth status", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	offline := fs.Bool("offline", false, "Only check if a cookie is saved; skip network validation")
+	fs.Usage = func() {
+		cli.PrintAuthStatusUsage(os.Stderr)
+	}
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if extra := fs.Args(); len(extra) > 0 {
+		cli.PrintAuthStatusUsage(os.Stderr)
+		return fmt.Errorf("unknown arguments: %s", strings.Join(extra, " "))
 	}
 
 	cfgPath, err := config.DefaultPath()
@@ -149,12 +236,87 @@ func runAuthStatus(args []string) error {
 	return nil
 }
 
+func runAuthLogout(args []string) error {
+	fs := flag.NewFlagSet("auth logout", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	fs.Usage = func() {
+		cli.PrintAuthLogoutUsage(os.Stderr)
+	}
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if extra := fs.Args(); len(extra) > 0 {
+		cli.PrintAuthLogoutUsage(os.Stderr)
+		return fmt.Errorf("unknown arguments: %s", strings.Join(extra, " "))
+	}
+
+	cfgPath, err := config.DefaultPath()
+	if err != nil {
+		return err
+	}
+
+	if err := config.Save(cfgPath, config.Config{Cookie: ""}); err != nil {
+		return err
+	}
+	fmt.Println("Logged out (saved cookie cleared).")
+	return nil
+}
+
+func runAuthImport(args []string) error {
+	fs := flag.NewFlagSet("auth import", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	headless := fs.Bool("headless", true, "Run Chrome in headless mode (default true)")
+	browser := fs.String("browser", "chrome", "Browser profile to read (chrome, chromium, brave, edge, helium, vivaldi)")
+	browserPath := fs.String("browser-path", "", "Path to browser executable (optional)")
+	userDataDir := fs.String("user-data-dir", "", "Path to browser user data dir (default for --browser)")
+	profile := fs.String("profile", "Default", "Browser profile directory name")
+	fs.Usage = func() {
+		cli.PrintAuthImportUsage(os.Stderr)
+	}
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if extra := fs.Args(); len(extra) > 0 {
+		cli.PrintAuthImportUsage(os.Stderr)
+		return fmt.Errorf("unknown arguments: %s", strings.Join(extra, " "))
+	}
+	if *profile == "" {
+		*profile = "Default"
+	}
+
+	fmt.Println("If import fails, close the browser and try again.")
+
+	cfgPath, err := config.DefaultPath()
+	if err != nil {
+		return err
+	}
+
+	return auth.ImportFromBrowser(context.Background(), cfgPath, auth.LoginOptions{
+		Headless:    *headless,
+		Browser:     *browser,
+		BrowserPath: *browserPath,
+		UserDataDir: *userDataDir,
+		ProfileDir:  *profile,
+	})
+}
+
 func runSync(args []string) error {
+	if len(args) > 0 && (args[0] == "help" || args[0] == "-h" || args[0] == "--help") {
+		cli.PrintSyncUsage(os.Stdout)
+		return nil
+	}
 	fs := flag.NewFlagSet("sync", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
+	fs.Usage = func() {
+		cli.PrintSyncUsage(os.Stderr)
+	}
 	mock := fs.Bool("mock", false, "Use sample data instead of hitting Zomato")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if extra := fs.Args(); len(extra) > 0 {
+		cli.PrintSyncUsage(os.Stderr)
+		return fmt.Errorf("unknown arguments: %s", strings.Join(extra, " "))
 	}
 
 	storePath, err := store.DefaultPath()
@@ -191,9 +353,24 @@ func runSync(args []string) error {
 	}
 
 	client := zomato.NewClient(cfg.Cookie)
-	orders, err := client.FetchOrders(context.Background())
+	terminal := isTerminal(os.Stdout)
+	progress := func(p zomato.FetchProgress) {
+		total := "?"
+		if p.TotalPages > 0 {
+			total = fmt.Sprintf("%d", p.TotalPages)
+		}
+		if terminal {
+			fmt.Fprintf(os.Stdout, "\rFetched page %d/%s (orders: %d)", p.Page, total, p.TotalOrders)
+		} else {
+			fmt.Fprintf(os.Stdout, "Fetched page %d/%s (orders: %d)\n", p.Page, total, p.TotalOrders)
+		}
+	}
+	orders, err := client.FetchOrdersWithProgress(context.Background(), progress)
 	if err != nil {
 		return err
+	}
+	if terminal {
+		fmt.Fprintln(os.Stdout)
 	}
 	if err := st.Save(orders); err != nil {
 		return err
@@ -203,11 +380,22 @@ func runSync(args []string) error {
 }
 
 func runOrders(args []string) error {
+	if len(args) > 0 && (args[0] == "help" || args[0] == "-h" || args[0] == "--help") {
+		cli.PrintOrdersUsage(os.Stdout)
+		return nil
+	}
 	fs := flag.NewFlagSet("orders", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	limit := fs.Int("limit", 20, "Max orders to print")
+	fs.Usage = func() {
+		cli.PrintOrdersUsage(os.Stderr)
+	}
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if extra := fs.Args(); len(extra) > 0 {
+		cli.PrintOrdersUsage(os.Stderr)
+		return fmt.Errorf("unknown arguments: %s", strings.Join(extra, " "))
 	}
 
 	storePath, err := store.DefaultPath()
@@ -233,11 +421,24 @@ func runOrders(args []string) error {
 }
 
 func runStats(args []string) error {
+	if len(args) > 0 && (args[0] == "help" || args[0] == "-h" || args[0] == "--help") {
+		cli.PrintStatsUsage(os.Stdout)
+		return nil
+	}
 	fs := flag.NewFlagSet("stats", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	group := fs.String("group", "month", "Group by: none, month, year")
+	view := fs.String("view", "basic", "View: basic, spend, patterns, personal, all")
+	top := fs.Int("top", 5, "Top N restaurants/items")
+	fs.Usage = func() {
+		cli.PrintStatsUsage(os.Stderr)
+	}
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if extra := fs.Args(); len(extra) > 0 {
+		cli.PrintStatsUsage(os.Stderr)
+		return fmt.Errorf("unknown arguments: %s", strings.Join(extra, " "))
 	}
 
 	storePath, err := store.DefaultPath()
@@ -256,18 +457,79 @@ func runStats(args []string) error {
 		return err
 	}
 
-	summary := stats.ComputeSummary(orders)
-	groups, err := stats.GroupOrders(orders, *group)
-	if err != nil {
-		return err
+	viewKey := strings.ToLower(strings.TrimSpace(*view))
+	if viewKey == "" {
+		viewKey = "basic"
 	}
-	format.StatsGroups(os.Stdout, groups, summary.Currency)
-	fmt.Fprintln(os.Stdout)
-	format.StatsSummary(os.Stdout, summary)
+	switch viewKey {
+	case "basic", "all", "spend", "patterns", "personal":
+	default:
+		cli.PrintStatsUsage(os.Stderr)
+		return fmt.Errorf("unknown view: %s", viewKey)
+	}
+
+	summary := stats.ComputeSummary(orders)
+
+	showBasic := viewKey == "basic"
+	showSpend := viewKey == "all" || viewKey == "spend"
+	showPatterns := viewKey == "all" || viewKey == "patterns"
+	showPersonal := viewKey == "all" || viewKey == "personal"
+
+	if showBasic || showSpend {
+		groups, err := stats.GroupOrders(orders, *group)
+		if err != nil {
+			return err
+		}
+		format.StatsGroups(os.Stdout, groups, summary.Currency)
+		fmt.Fprintln(os.Stdout)
+		format.StatsSummary(os.Stdout, summary)
+	}
+
+	if showBasic {
+		fmt.Fprintln(os.Stdout)
+		fmt.Fprintln(os.Stdout, "More views: zocli stats --view spend | patterns | personal")
+		return nil
+	}
+
+	if showSpend {
+		fmt.Fprintln(os.Stdout)
+		fmt.Fprintln(os.Stdout, "Spend by weekday")
+		format.StatsSpendByWeekday(os.Stdout, stats.SpendByWeekday(orders), summary.Currency)
+		fmt.Fprintln(os.Stdout)
+	}
+
+	if showPatterns {
+		fmt.Fprintln(os.Stdout, "Ordering patterns")
+		format.StatsWeekdayOrders(os.Stdout, stats.OrdersByWeekday(orders))
+		fmt.Fprintln(os.Stdout)
+		format.StatsTimeWindows(os.Stdout, stats.OrdersByTimeWindow(orders))
+		fmt.Fprintln(os.Stdout)
+	}
+
+	if showPersonal {
+		fmt.Fprintln(os.Stdout, "Personal stats")
+		format.StatsTopList(os.Stdout, "Restaurant", stats.TopRestaurants(orders, *top))
+		fmt.Fprintln(os.Stdout)
+		items := stats.TopItems(orders, *top)
+		if len(items) == 0 {
+			fmt.Fprintln(os.Stdout, "No item data to display.")
+		} else {
+			format.StatsTopList(os.Stdout, "Item", items)
+		}
+		fmt.Fprintln(os.Stdout)
+	}
 	return nil
 }
 
-func runConfig() error {
+func runConfig(args []string) error {
+	if len(args) > 0 {
+		if args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
+			cli.PrintConfigUsage(os.Stdout)
+			return nil
+		}
+		cli.PrintConfigUsage(os.Stderr)
+		return fmt.Errorf("unknown arguments: %s", strings.Join(args, " "))
+	}
 	cfgPath, err := config.DefaultPath()
 	if err != nil {
 		return err
@@ -291,4 +553,12 @@ func must(err error) {
 	}
 	fmt.Fprintln(os.Stderr, "Error:", err)
 	os.Exit(1)
+}
+
+func isTerminal(f *os.File) bool {
+	info, err := f.Stat()
+	if err != nil {
+		return false
+	}
+	return (info.Mode() & os.ModeCharDevice) != 0
 }

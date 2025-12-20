@@ -23,22 +23,7 @@ brew install maheshrijal/tap/zocli
 ./zocli auth login
 ```
 
-```bash
-./zocli auth login --browser chrome --profile "Default"
-```
-
-```bash
-./zocli auth import --browser chrome --profile "Default"
-```
-
-Manual cookie (if you must):
-
-```bash
-./zocli auth --cookie "<cookie header>"
-```
-
-If your browser isn't listed, pass its profile path with `--user-data-dir`.
-If import still fails, pass the browser binary with `--browser-path`.
+See `zocli auth help` for advanced options.
 
 Then sync:
 

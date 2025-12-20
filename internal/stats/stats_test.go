@@ -1,7 +1,6 @@
 package stats
 
 import (
-	"reflect"
 	"testing"
 	"time"
 

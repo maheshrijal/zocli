@@ -3,7 +3,6 @@ package store
 import (
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 

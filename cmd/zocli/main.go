@@ -65,6 +65,8 @@ func main() {
 		must(runConfig(os.Args[2:]))
 	case "inflation":
 		must(runInflation(os.Args[2:]))
+	case "debug-api":
+		must(runDebugAPI(os.Args[2:]))
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", os.Args[1])
 		cli.PrintUsage(os.Stderr)
@@ -600,6 +602,27 @@ func runInflation(args []string) error {
 	}
 
 	format.InflationTable(os.Stdout, points)
+	return nil
+}
+
+func runDebugAPI(args []string) error {
+	path, err := config.DefaultPath()
+	if err != nil {
+		return err
+	}
+	cfg, err := config.Load(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.New("not logged in; run 'zocli auth' first")
+		}
+		return err
+	}
+	client := zomato.NewClient(cfg.Cookie)
+	raw, err := client.DebugFetchFirstPageRaw(context.Background())
+	if err != nil {
+		return err
+	}
+	fmt.Println(raw)
 	return nil
 }
 

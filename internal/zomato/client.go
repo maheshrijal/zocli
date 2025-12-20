@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -82,6 +83,40 @@ func (c *Client) FetchOrdersWithProgress(ctx context.Context, progress func(Fetc
 	}
 
 	return all, nil
+}
+
+func (c *Client) DebugFetchFirstPageRaw(ctx context.Context) (string, error) {
+	endpoint, err := url.Parse(c.BaseURL + "/webroutes/user/orders")
+	if err != nil {
+		return "", err
+	}
+	query := endpoint.Query()
+	query.Set("page", "1")
+	endpoint.RawQuery = query.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+	if err != nil {
+		return "", err
+	}
+	c.decorateRequest(req)
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("zomato orders request failed: %s", resp.Status)
+	}
+
+	// Just read the body and return it
+	var buf strings.Builder
+	_, err = io.Copy(&buf, resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 func (c *Client) CheckAuth(ctx context.Context) (bool, error) {

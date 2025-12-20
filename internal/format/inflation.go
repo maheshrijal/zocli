@@ -71,13 +71,8 @@ func InflationSummaryTable(w io.Writer, summaries []InflationSummary) {
 			changeStr = fmt.Sprintf("%.1f%% 🔻", s.TotalChange)
 		}
 
-		item := s.ItemName
-		if len(item) > 30 {
-			item = item[:27] + "..."
-		}
-
 		fmt.Fprintf(tw, "%s\t%s\t%.2f\t%.2f\t%s\n",
-			item,
+			s.ItemName,
 			s.FirstSeen,
 			s.FirstPrice,
 			s.LastPrice,

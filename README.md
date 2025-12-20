@@ -1,46 +1,32 @@
-# zocli
+# zocli 🍕
 
-A tiny CLI to view and analyze your Zomato order history.
+A tiny, powerful CLI to view and analyze your Zomato order history.
 
-## Install with Homebrew
+
+## Features
+
+- **📈 Inflation Tracker**: Monitor how prices for your favorite items change over time.
+- **💰 Spending Analytics**: Deep dive into spending by weekday, time of day, and top restaurants.
+- **🔒 Privacy First**: Your data stays on your machine. Cookies are stored locally.
+
+## Install
 
 ```bash
-brew tap maheshrijal/tap
 brew install maheshrijal/tap/zocli
 ```
 
-## What this is
-- A Go CLI for Zomato to check order history, spent amount, tracking etc.
+## Quick Start
 
-## What this is not
-- An official Zomato integration
-- A stable API client
-- A guarantee of ToS compliance
+1. **Login** (saves cookie locally):
+   ```bash
+   zocli auth login
+   ```
 
-## Auth
+2. **Sync Orders**:
+   ```bash
+   zocli sync
+   ```
 
-```bash
-./zocli auth login
-```
-
-See `zocli auth help` for advanced options.
-
-Then sync:
-
-```bash
-./zocli sync
-```
-
-## Commands
-
-- `auth` — Save your Zomato cookie for future requests
-- `auth logout` — Clear the saved cookie
-- `auth status` — Check whether your saved cookie is still valid
-- `sync` — Fetch orders and store locally (or `--mock`)
-- `orders` — List stored orders
-- `stats` — Summarize total spend with optional grouping
-- `inflation` — Track unit price history for items
-- `config` — Show config and cache paths
 
 ## Showcase
 
@@ -58,31 +44,38 @@ Then sync:
   <img src="assets/Inflation.png" alt="Inflation Tracker" width="100%" />
 </p>
 
+## Commands
+
+### `stats`
+Analyze your spending habits.
 ```bash
-# View deep spending patterns
-./zocli stats --view patterns
-
-# General summary
-./zocli stats
-
-# Track item inflation
-./zocli inflation "Biryani"
+zocli stats --view patterns   # See when you order the most
+zocli stats --view spend      # See spending by weekday
+zocli stats --view personal   # Top restaurants and items
 ```
 
-## Project layout
-
-```
-cmd/zocli          # CLI entrypoint
-internal/auth          # Browser-based login
-internal/cli           # Usage and help text
-internal/config        # Config file handling
-internal/store         # Local cache for orders
-internal/zomato        # Zomato client + models
-internal/stats         # Spending summaries
-internal/sample        # Embedded mock orders
+### `inflation`
+Track how much item prices have risen.
+```bash
+zocli inflation              # Summary of top risers
+zocli inflation "Biryani"    # Track specifics
 ```
 
+### `orders`
+List your raw order history.
+```bash
+zocli orders --limit 50
+```
+
+## Project Layout
+
+```
+cmd/zocli          # Entrypoint
+internal/tui       # Bubble Tea Dashboard components
+internal/stats     # Analysis logic
+internal/zomato    # API Client
+internal/store     # Local JSON storage
+```
 
 ## Disclaimer
-This is an **unofficial** project and is **not affiliated with Zomato**. Please don't sue me 🙏  
-Using cookies or reverse-engineered endpoints may violate terms of service. Use at your own risk.
+This is an **unofficial** project and is **not affiliated with Zomato**. Use at your own risk.

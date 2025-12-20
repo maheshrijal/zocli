@@ -50,3 +50,33 @@ func TestStore_SaveLoad(t *testing.T) {
 		t.Errorf("Second order ID = %s, want 1", loaded[1].ID)
 	}
 }
+
+func TestStore_LoadCorrupt(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "zocli_store_corrupt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	dbPath := filepath.Join(tmpDir, "orders.json")
+	if err := os.WriteFile(dbPath, []byte("{invalid json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	s, _ := New(dbPath)
+	_, err = s.Load()
+	if err == nil {
+		t.Error("Load corrupt file: succeeded, want error")
+	}
+}
+
+func TestDefaultPath(t *testing.T) {
+	// This test just ensures no panic, as it depends on user config dir
+	path, err := DefaultPath()
+	if err != nil {
+		t.Fatalf("DefaultPath failed: %v", err)
+	}
+	if path == "" {
+		t.Error("DefaultPath returned empty string")
+	}
+}

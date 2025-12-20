@@ -20,7 +20,8 @@ func DefaultPath() (string, error) {
 		return "", err
 	}
 	newPath := filepath.Join(dir, "zocli", "orders.json")
-	return newPath, nil
+	oldPath := filepath.Join(dir, "zomatocli", "orders.json")
+	return preferPath(newPath, oldPath, 0o600), nil
 }
 
 func New(path string) (*Store, error) {
@@ -54,4 +55,36 @@ func (s *Store) Save(orders []zomato.Order) error {
 		return err
 	}
 	return os.WriteFile(s.path, data, 0o600)
+}
+
+func preferPath(newPath, oldPath string, perm os.FileMode) string {
+	if fileExists(newPath) {
+		return newPath
+	}
+	if fileExists(oldPath) {
+		if err := copyFile(oldPath, newPath, perm); err == nil {
+			return newPath
+		}
+		return oldPath
+	}
+	return newPath
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return !info.IsDir()
+}
+
+func copyFile(src, dst string, perm os.FileMode) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, perm)
 }

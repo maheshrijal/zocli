@@ -446,6 +446,12 @@ func runStats(args []string) error {
 	if viewKey == "" {
 		viewKey = "basic"
 	}
+	switch viewKey {
+	case "basic", "all", "spend", "patterns", "personal":
+	default:
+		cli.PrintStatsUsage(os.Stderr)
+		return fmt.Errorf("unknown view: %s", viewKey)
+	}
 
 	summary := stats.ComputeSummary(orders)
 

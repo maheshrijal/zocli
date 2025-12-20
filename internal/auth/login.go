@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -134,8 +135,10 @@ func captureCookie(ctx context.Context, cfgPath string, opts LoginOptions) error
 
 		if err := runChromedp(browserCtx,
 			chromedp.Evaluate(`(() => {
+				const labels = ['log in', 'login', 'sign in'];
+				const norm = (s) => (s || '').trim().toLowerCase();
 				const el = Array.from(document.querySelectorAll('a, button, div, span'))
-					.find(e => (e.textContent || '').trim().toLowerCase() === 'log in');
+					.find(e => labels.some(l => norm(e.textContent).includes(l)));
 				if (!el) return false;
 				el.click();
 				return true;
@@ -230,9 +233,10 @@ func waitForLogin(ctx context.Context) error {
 func isLoggedIn(ctx context.Context) (bool, error) {
 	var loggedIn bool
 	err := chromedp.Run(ctx, chromedp.Evaluate(`(() => {
+		const labels = ['log in', 'login', 'sign in'];
 		const norm = (s) => (s || '').trim().toLowerCase();
 		const hasLogin = Array.from(document.querySelectorAll('a, button, div, span'))
-			.some(e => norm(e.textContent) === 'log in');
+			.some(e => labels.some(l => norm(e.textContent).includes(l)));
 		return !hasLogin;
 	})()`, &loggedIn))
 	return loggedIn, err
@@ -301,6 +305,8 @@ func defaultUserDataDir(browser string) (string, error) {
 			return filepath.Join(base, "BraveSoftware/Brave-Browser"), nil
 		case "edge":
 			return filepath.Join(base, "microsoft-edge"), nil
+		case "vivaldi":
+			return filepath.Join(base, "vivaldi"), nil
 		}
 	case "windows":
 		local := os.Getenv("LOCALAPPDATA")
@@ -316,6 +322,8 @@ func defaultUserDataDir(browser string) (string, error) {
 			return filepath.Join(local, "BraveSoftware", "Brave-Browser", "User Data"), nil
 		case "edge":
 			return filepath.Join(local, "Microsoft", "Edge", "User Data"), nil
+		case "vivaldi":
+			return filepath.Join(local, "Vivaldi", "User Data"), nil
 		}
 	}
 
@@ -349,11 +357,16 @@ func displayBrowserName(name string) string {
 }
 
 func defaultBrowserPath(browser string) (string, bool) {
-	if runtime.GOOS != "darwin" {
-		return "", false
-	}
 	name := strings.ToLower(strings.TrimSpace(browser))
 	if name == "" || name == "chrome" || name == "google-chrome" {
+		return "", false
+	}
+	if runtime.GOOS != "darwin" {
+		for _, candidate := range browserBinaryCandidates(name) {
+			if path, err := exec.LookPath(candidate); err == nil {
+				return path, true
+			}
+		}
 		return "", false
 	}
 	var path string
@@ -376,6 +389,23 @@ func defaultBrowserPath(browser string) (string, bool) {
 		return path, true
 	}
 	return "", false
+}
+
+func browserBinaryCandidates(name string) []string {
+	switch name {
+	case "brave":
+		return []string{"brave-browser", "brave-browser-stable", "brave"}
+	case "chromium":
+		return []string{"chromium", "chromium-browser"}
+	case "edge":
+		return []string{"microsoft-edge", "msedge"}
+	case "vivaldi":
+		return []string{"vivaldi"}
+	case "helium":
+		return []string{"helium"}
+	default:
+		return nil
+	}
 }
 
 func ensureProfileHasCookies(userDataDir, profile string) error {

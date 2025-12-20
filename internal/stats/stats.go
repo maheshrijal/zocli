@@ -347,7 +347,10 @@ func percent(value, total int) float64 {
 	return (float64(value) / float64(total)) * 100
 }
 
-var amountPattern = regexp.MustCompile(`[0-9]+(?:[.,][0-9]+)?`)
+var (
+	amountPattern = regexp.MustCompile(`[0-9]+(?:[.,][0-9]+)?`)
+	moneyPattern  = regexp.MustCompile(`^\s*([^\d.,\s]+)?\s*([\d.,]+)\s*([^\d.,\s]+)?\s*$`)
+)
 
 func parseAmount(input string) (float64, string) {
 	input = strings.TrimSpace(input)
@@ -356,6 +359,19 @@ func parseAmount(input string) (float64, string) {
 	}
 
 	currency := ""
+	matches := moneyPattern.FindStringSubmatch(input)
+	if len(matches) == 4 {
+		prefix := strings.TrimSpace(matches[1])
+		suffix := strings.TrimSpace(matches[3])
+		if prefix != "" {
+			currency = prefix
+		} else if suffix != "" {
+			currency = suffix
+		}
+		value, cur := parseAmountValue(matches[2], currency)
+		return value, cur
+	}
+
 	for _, r := range input {
 		if unicode.IsDigit(r) || r == '.' || r == ',' || unicode.IsSpace(r) {
 			continue
@@ -363,15 +379,36 @@ func parseAmount(input string) (float64, string) {
 		currency = string(r)
 		break
 	}
+	amount := amountPattern.FindString(input)
+	if amount == "" {
+		return 0, normalizeCurrency(currency)
+	}
+	value, cur := parseAmountValue(amount, currency)
+	return value, cur
+}
 
-	match := amountPattern.FindString(input)
-	if match == "" {
-		return 0, currency
-	}
-	match = strings.ReplaceAll(match, ",", "")
-	value, err := strconv.ParseFloat(match, 64)
+func parseAmountValue(amountRaw, currency string) (float64, string) {
+	amountRaw = strings.ReplaceAll(amountRaw, ",", "")
+	value, err := strconv.ParseFloat(amountRaw, 64)
 	if err != nil {
-		return 0, currency
+		return 0, normalizeCurrency(currency)
 	}
-	return value, currency
+	return value, normalizeCurrency(currency)
+}
+
+func normalizeCurrency(cur string) string {
+	cur = strings.TrimSpace(cur)
+	if cur == "" {
+		return ""
+	}
+	if strings.Contains(cur, "₹") {
+		return "₹"
+	}
+	normalized := strings.ToLower(cur)
+	normalized = strings.Trim(normalized, ".")
+	switch normalized {
+	case "rs", "rs.", "inr":
+		return "₹"
+	}
+	return cur
 }

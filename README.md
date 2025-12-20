@@ -42,26 +42,20 @@ Then sync:
 - `inflation` — Track unit price history for items
 - `config` — Show config and cache paths
 
-## Examples
+## Showcase
 
-### Stats Analysis
-Analyze your spending patterns:
+<p align="center">
+  <img src="assets/Stats.png" alt="Stats Analysis" width="45%" />
+  &nbsp; &nbsp;
+  <img src="assets/Inflation.png" alt="Inflation Tracker" width="45%" />
+</p>
+
 ```bash
+# View spending patterns
 ./zocli stats --view patterns
-```
-![Stats Analysis](assets/Stats.png)
 
-### Inflation Tracker
-See how prices for your favorite items have changed over time:
-```bash
+# Track item price history
 ./zocli inflation "Biryani"
-```
-![Inflation Tracker](assets/Inflation.png)
-
-More views:
-```bash
-./zocli stats --group year
-./zocli stats --view spend
 ```
 
 ## Project layout

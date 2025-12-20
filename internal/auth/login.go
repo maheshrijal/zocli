@@ -84,6 +84,9 @@ func captureCookie(ctx context.Context, cfgPath string, opts LoginOptions) error
 	if browserPath == "" && strings.EqualFold(opts.Browser, "helium") {
 		fmt.Println("Helium app not found; using default Chrome. If import fails, pass --browser-path.")
 	}
+	if browserPath == "" && !strings.EqualFold(opts.Browser, "chrome") && !strings.EqualFold(opts.Browser, "google-chrome") {
+		fmt.Printf("Browser %q not found at default path; using Chrome. If import fails, pass --browser-path.\n", opts.Browser)
+	}
 
 	execOpts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Flag("headless", opts.Headless),
@@ -284,6 +287,8 @@ func defaultUserDataDir(browser string) (string, error) {
 			return filepath.Join(home, "Library/Application Support/BraveSoftware/Brave-Browser"), nil
 		case "edge":
 			return filepath.Join(home, "Library/Application Support/Microsoft Edge"), nil
+		case "vivaldi":
+			return filepath.Join(home, "Library/Application Support/Vivaldi"), nil
 		}
 	case "linux":
 		base := filepath.Join(home, ".config")
@@ -351,11 +356,24 @@ func defaultBrowserPath(browser string) (string, bool) {
 	if name == "" || name == "chrome" || name == "google-chrome" {
 		return "", false
 	}
-	if name == "helium" {
-		path := "/Applications/Helium.app/Contents/MacOS/Helium"
-		if fileExists(path) {
-			return path, true
-		}
+	var path string
+	switch name {
+	case "helium":
+		path = "/Applications/Helium.app/Contents/MacOS/Helium"
+	case "brave":
+		path = "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+	case "chromium":
+		path = "/Applications/Chromium.app/Contents/MacOS/Chromium"
+	case "edge":
+		path = "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"
+	case "vivaldi":
+		path = "/Applications/Vivaldi.app/Contents/MacOS/Vivaldi"
+	}
+	if path == "" {
+		return "", false
+	}
+	if fileExists(path) {
+		return path, true
 	}
 	return "", false
 }

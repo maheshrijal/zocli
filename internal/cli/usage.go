@@ -30,8 +30,8 @@ func PrintAuthUsage(w io.Writer) {
 	fmt.Fprint(w, `auth - save or manage your Zomato session cookie
 
 Usage:
-  zocli auth login [--headless] [--browser chrome|chromium|brave|edge|helium] [--profile "Default"] [--user-data-dir PATH] [--browser-path PATH]
-  zocli auth import [--browser chrome|chromium|brave|edge|helium] [--profile "Default"] [--user-data-dir PATH] [--browser-path PATH]
+  zocli auth login [--headless] [--browser chrome|chromium|brave|edge|helium|vivaldi] [--profile "Default"] [--user-data-dir PATH] [--browser-path PATH]
+  zocli auth import [--browser chrome|chromium|brave|edge|helium|vivaldi] [--profile "Default"] [--user-data-dir PATH] [--browser-path PATH]
   zocli auth logout
   zocli auth status [--offline]
   zocli auth --cookie "<cookie header>"
@@ -49,7 +49,7 @@ func PrintAuthLoginUsage(w io.Writer) {
 	fmt.Fprint(w, `zocli auth login
 
 Usage:
-  zocli auth login [--browser chrome|chromium|brave|edge|helium] [--profile "Default"]
+  zocli auth login [--browser chrome|chromium|brave|edge|helium|vivaldi] [--profile "Default"]
 
 Options:
   --browser       Browser profile to use (default: chrome)
@@ -68,7 +68,7 @@ func PrintAuthImportUsage(w io.Writer) {
 	fmt.Fprint(w, `zocli auth import
 
 Usage:
-  zocli auth import [--browser chrome|chromium|brave|edge|helium] [--profile "Default"]
+  zocli auth import [--browser chrome|chromium|brave|edge|helium|vivaldi] [--profile "Default"]
 
 Options:
   --browser       Browser profile to read (default: chrome)

@@ -252,7 +252,7 @@ func parseOrderDate(input string) time.Time {
 	return time.Time{}
 }
 
-var dishQtyPattern = regexp.MustCompile(`^\\s*(\\d+)\\s*x\\s*(.+)\\s*$`)
+var dishQtyPattern = regexp.MustCompile(`^\s*(\d+)\s*x\s*(.+)\s*$`)
 
 func parseItems(dishString string) []OrderItem {
 	dishString = strings.TrimSpace(dishString)
@@ -260,7 +260,36 @@ func parseItems(dishString string) []OrderItem {
 		return nil
 	}
 
-	parts := strings.Split(dishString, ",")
+	// Split by comma, but respect brackets [] and ()
+	var parts []string
+	var current strings.Builder
+	depth := 0
+	
+	for _, r := range dishString {
+		switch r {
+		case '[', '(':
+			depth++
+			current.WriteRune(r)
+		case ']', ')':
+			if depth > 0 {
+				depth--
+			}
+			current.WriteRune(r)
+		case ',':
+			if depth == 0 {
+				parts = append(parts, current.String())
+				current.Reset()
+			} else {
+				current.WriteRune(r)
+			}
+		default:
+			current.WriteRune(r)
+		}
+	}
+	if current.Len() > 0 {
+		parts = append(parts, current.String())
+	}
+
 	items := make([]OrderItem, 0, len(parts))
 	for _, part := range parts {
 		part = strings.TrimSpace(part)

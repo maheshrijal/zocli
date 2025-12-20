@@ -78,8 +78,15 @@ func FindTopInflationTrends(orders []zomato.Order, limit int) []InflationTrend {
 			change = ((last.UnitPrice - first.UnitPrice) / first.UnitPrice) * 100
 		}
 
+		// Shorten restaurant name to first 2 words for display
+		restParts := strings.Fields(points[0].Restaurant)
+		shortRest := points[0].Restaurant
+		if len(restParts) > 2 {
+			shortRest = strings.Join(restParts[:2], " ")
+		}
+
 		trends = append(trends, InflationTrend{
-			Key:         points[0].Restaurant + " - " + points[0].ItemName,
+			Key:         shortRest + " - " + points[0].ItemName,
 			ItemName:    points[0].ItemName,
 			Restaurant:  points[0].Restaurant,
 			FirstSeen:   first.Date,

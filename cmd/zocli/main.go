@@ -63,6 +63,10 @@ func main() {
 		must(runStats(os.Args[2:]))
 	case "config":
 		must(runConfig(os.Args[2:]))
+	case "inflation":
+		must(runInflation(os.Args[2:]))
+	case "debug-api":
+		must(runDebugAPI(os.Args[2:]))
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", os.Args[1])
 		cli.PrintUsage(os.Stderr)
@@ -541,6 +545,84 @@ func runConfig(args []string) error {
 
 	fmt.Printf("Config: %s\n", cfgPath)
 	fmt.Printf("Orders: %s\n", storePath)
+	return nil
+}
+
+func runInflation(args []string) error {
+	storePath, err := store.DefaultPath()
+	if err != nil {
+		return err
+	}
+	st, err := store.New(storePath)
+	if err != nil {
+		return err
+	}
+	orders, err := st.Load()
+	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.New("no stored orders yet; run 'zocli sync' first")
+		}
+		return err
+	}
+
+	// Case 1: Show top 5 items summary if no args
+	if len(args) == 0 {
+		trends := stats.FindTopInflationTrends(orders, 5)
+		var summaries []format.InflationSummary
+
+		for _, t := range trends {
+			summaries = append(summaries, format.InflationSummary{
+				ItemName:    t.Key, // Shows "Restaurant - Item"
+				FirstSeen:   t.FirstSeen.Format("2006-01-02"),
+				FirstPrice:  t.FirstPrice,
+				LastPrice:   t.LastPrice,
+				TotalChange: t.TotalChange,
+			})
+		}
+		
+		fmt.Println("Top Inflation Trends (Restaurant specific)")
+		format.InflationSummaryTable(os.Stdout, summaries)
+		fmt.Println("\nTip: Run 'zocli inflation <item name>' for detailed history.")
+		return nil
+	}
+	
+	query := strings.Join(args, " ")
+	if strings.HasPrefix(query, "-") {
+		if query == "--help" || query == "-h" {
+			fmt.Fprintln(os.Stdout, "Usage: zocli inflation [item name]")
+			fmt.Fprintln(os.Stdout, "  No args: Shows trend summary for top 5 most ordered items.")
+			fmt.Fprintln(os.Stdout, "  Arg: Shows detailed price history for matching items.")
+			return nil
+		}
+	}
+
+	points, err := stats.CalculateInflation(orders, query)
+	if err != nil {
+		return err
+	}
+
+	format.InflationTable(os.Stdout, points)
+	return nil
+}
+
+func runDebugAPI(args []string) error {
+	path, err := config.DefaultPath()
+	if err != nil {
+		return err
+	}
+	cfg, err := config.Load(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.New("not logged in; run 'zocli auth' first")
+		}
+		return err
+	}
+	client := zomato.NewClient(cfg.Cookie)
+	raw, err := client.DebugFetchFirstPageRaw(context.Background())
+	if err != nil {
+		return err
+	}
+	fmt.Println(raw)
 	return nil
 }
 

@@ -565,39 +565,20 @@ func runInflation(args []string) error {
 
 	// Case 1: Show top 5 items summary if no args
 	if len(args) == 0 {
-		// Fetch top 50 items to have enough candidates even after filtering mixed orders
-		topItems := stats.TopItems(orders, 50)
+		trends := stats.FindTopInflationTrends(orders, 5)
 		var summaries []format.InflationSummary
 
-		for _, item := range topItems {
-			if len(summaries) >= 5 {
-				break
-			}
-
-			points, err := stats.CalculateInflation(orders, item.Key)
-			if err != nil || len(points) < 2 {
-				continue
-			}
-			
-			first := points[0]
-			last := points[len(points)-1]
-			
-			// Calculate total change
-			change := 0.0
-			if first.UnitPrice > 0 {
-				change = ((last.UnitPrice - first.UnitPrice) / first.UnitPrice) * 100
-			}
-
+		for _, t := range trends {
 			summaries = append(summaries, format.InflationSummary{
-				ItemName:    item.Key,
-				FirstSeen:   first.Date.Format("2006-01-02"),
-				FirstPrice:  first.UnitPrice,
-				LastPrice:   last.UnitPrice,
-				TotalChange: change,
+				ItemName:    t.Key, // Shows "Restaurant - Item"
+				FirstSeen:   t.FirstSeen.Format("2006-01-02"),
+				FirstPrice:  t.FirstPrice,
+				LastPrice:   t.LastPrice,
+				TotalChange: t.TotalChange,
 			})
 		}
 		
-		fmt.Println("Top Inflation Trends (Most Ordered Items)")
+		fmt.Println("Top Inflation Trends (Restaurant specific)")
 		format.InflationSummaryTable(os.Stdout, summaries)
 		fmt.Println("\nTip: Run 'zocli inflation <item name>' for detailed history.")
 		return nil

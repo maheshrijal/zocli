@@ -39,19 +39,28 @@ Then sync:
 - `sync` — Fetch orders and store locally (or `--mock`)
 - `orders` — List stored orders
 - `stats` — Summarize total spend with optional grouping
+- `inflation` — Track unit price history for items
 - `config` — Show config and cache paths
 
-Example:
+## Examples
 
-```bash
-./zocli stats --group year
-```
-
-More views:
-
+### Stats Analysis
+Analyze your spending patterns:
 ```bash
 ./zocli stats --view patterns
-./zocli stats --view personal
+```
+![Stats Analysis](assets/Stats.png)
+
+### Inflation Tracker
+See how prices for your favorite items have changed over time:
+```bash
+./zocli inflation "Biryani"
+```
+![Inflation Tracker](assets/Inflation.png)
+
+More views:
+```bash
+./zocli stats --group year
 ./zocli stats --view spend
 ```
 

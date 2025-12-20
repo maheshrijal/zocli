@@ -44,17 +44,27 @@ Then sync:
 
 ## Showcase
 
-<p align="center">
-  <img src="assets/Stats.png" alt="Stats Analysis" width="45%" />
-  &nbsp; &nbsp;
-  <img src="assets/Inflation.png" alt="Inflation Tracker" width="45%" />
-</p>
+<table>
+  <tr>
+    <td width="60%" valign="top">
+      <img src="assets/Patterns.png" alt="Spending Patterns" width="100%" />
+    </td>
+    <td width="40%" valign="top">
+      <img src="assets/Stats.png" alt="General Stats" width="100%" />
+      <br/><br/>
+      <img src="assets/Inflation.png" alt="Inflation Tracker" width="100%" />
+    </td>
+  </tr>
+</table>
 
 ```bash
-# View spending patterns
+# View deep spending patterns
 ./zocli stats --view patterns
 
-# Track item price history
+# General summary
+./zocli stats
+
+# Track item inflation
 ./zocli inflation "Biryani"
 ```
 

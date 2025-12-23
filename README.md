@@ -64,6 +64,7 @@ Interactive dashboard to explore your data.
 Generate a Spotify-Wrapped style slideshow of your food journey.
 ```bash
 zocli wrapped
+zocli wrapped --year 2023    # Filter for a specific year
 ```
 
 ### `suggest`

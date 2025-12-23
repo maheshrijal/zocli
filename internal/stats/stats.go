@@ -14,9 +14,9 @@ import (
 )
 
 // SuggestRestaurant recommends a restaurant and a dish based on frequency.
-func SuggestRestaurant(orders []zomato.Order) (string, string) {
+func SuggestRestaurant(orders []zomato.Order) (string, string, error) {
 	if len(orders) == 0 {
-		return "No order history to suggest from!", ""
+		return "", "", errors.New("no order history to suggest from")
 	}
 
 	// 1. Build frequency map for restaurants
@@ -43,7 +43,7 @@ func SuggestRestaurant(orders []zomato.Order) (string, string) {
 	}
 
 	if len(resCounts) == 0 {
-		return "No valid restaurants found.", ""
+		return "", "", errors.New("no valid restaurants found")
 	}
 
 	// 2. Weighted random selection for Restaurant
@@ -87,19 +87,19 @@ func SuggestRestaurant(orders []zomato.Order) (string, string) {
 		}
 	}
 
-	return chosenRes, bestItem
+	return chosenRes, bestItem, nil
 }
 
-// FilterOrdersByDate filters orders within a specific date range (inclusive).
+// FilterOrdersByDate filters orders within a specific date range [start, end).
+// The start date is inclusive, the end date is exclusive.
 func FilterOrdersByDate(orders []zomato.Order, start, end time.Time) []zomato.Order {
 	var filtered []zomato.Order
 	for _, o := range orders {
 		if o.PlacedAt.IsZero() {
 			continue
 		}
-		// Check if order is after or at start AND before or at end
-		if (o.PlacedAt.Equal(start) || o.PlacedAt.After(start)) && 
-		   (o.PlacedAt.Equal(end) || o.PlacedAt.Before(end)) {
+		// Check if order is after or at start AND before end (exclusive)
+		if (o.PlacedAt.Equal(start) || o.PlacedAt.After(start)) && o.PlacedAt.Before(end) {
 			filtered = append(filtered, o)
 		}
 	}

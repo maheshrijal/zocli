@@ -118,11 +118,11 @@ func (m *Model) setFilter(f Filter) {
 	switch f {
 	case FilterYear:
 		start := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.Local)
-		end := start.AddDate(1, 0, -1)
+		end := start.AddDate(1, 0, 0) // Start of next year
 		m.orders = stats.FilterOrdersByDate(m.allOrders, start, end)
 	case FilterMonth:
 		start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
-		end := start.AddDate(0, 1, -1)
+		end := start.AddDate(0, 1, 0) // Start of next month
 		m.orders = stats.FilterOrdersByDate(m.allOrders, start, end)
 	default:
 		m.orders = m.allOrders

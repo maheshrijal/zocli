@@ -14,7 +14,6 @@ import (
 // ToCSV writes orders as CSV to the provided writer.
 func ToCSV(orders []zomato.Order, w io.Writer) error {
 	cw := csv.NewWriter(w)
-	defer cw.Flush()
 
 	// Header
 	if err := cw.Write([]string{
@@ -46,7 +45,9 @@ func ToCSV(orders []zomato.Order, w io.Writer) error {
 			return err
 		}
 	}
-	return nil
+	
+	cw.Flush()
+	return cw.Error()
 }
 
 // ToJSON writes orders as pretty-printed JSON to the provided writer.

@@ -739,7 +739,11 @@ func runSuggest(args []string) error {
 		return err
 	}
 	
-	restaurant, dish := stats.SuggestRestaurant(orders)
+	restaurant, dish, err := stats.SuggestRestaurant(orders)
+	if err != nil {
+		fmt.Printf("🎲  Suggest failed: %v\n\n(Tip: Run 'zocli sync' to fetch orders first)\n", err)
+		return nil
+	}
 	
 	fmt.Printf("🎲 How about ordering from: \n\n  ✨ %s ✨\n", restaurant)
 	if dish != "" {
@@ -787,7 +791,7 @@ func runWrapped(args []string) error {
 	
 	// Filter for the target year
 	start := time.Date(targetYear, 1, 1, 0, 0, 0, 0, time.Local)
-	end := start.AddDate(1, 0, -1)
+	end := start.AddDate(1, 0, 0) // Start of next year
 	yearOrders := stats.FilterOrdersByDate(orders, start, end)
 	
 	if len(yearOrders) == 0 {

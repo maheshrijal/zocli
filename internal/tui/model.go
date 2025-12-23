@@ -14,6 +14,14 @@ import (
 
 type tickMsg time.Time
 
+type Filter int
+
+const (
+	FilterAll Filter = iota
+	FilterYear
+	FilterMonth
+)
+
 type Tab int
 
 const (
@@ -24,12 +32,14 @@ const (
 
 type Model struct {
 	activeTab Tab
+	activeFilter Filter
 	width     int
 	height    int
 	
 	// Data
-	summary stats.Summary
-	orders  []zomato.Order
+	allOrders []zomato.Order // Source of truth
+	orders    []zomato.Order // Filtered view
+	summary   stats.Summary
 
 	// Components
 	orderTable     table.Model
@@ -43,10 +53,12 @@ func NewModel(orders []zomato.Order) Model {
 	summary := stats.ComputeSummary(orders)
 	
 	m := Model{
-		activeTab: TabSummary,
-		orders:    orders,
-		summary:   summary,
-		styles:    DefaultStyles(),
+		activeTab:    TabSummary,
+		activeFilter: FilterAll,
+		allOrders:    orders,
+		orders:       orders,
+		summary:      summary,
+		styles:       DefaultStyles(),
 	}
 	
 	m.initOrderTable()
@@ -73,6 +85,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.activeTab < 0 {
 				m.activeTab = 2
 			}
+		case "a":
+			m.setFilter(FilterAll)
+		case "y":
+			m.setFilter(FilterYear)
+		case "m":
+			m.setFilter(FilterMonth)
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -91,6 +109,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m *Model) setFilter(f Filter) {
+	m.activeFilter = f
+	now := time.Now()
+	
+	switch f {
+	case FilterYear:
+		start := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.Local)
+		end := start.AddDate(1, 0, 0) // Start of next year
+		m.orders = stats.FilterOrdersByDate(m.allOrders, start, end)
+	case FilterMonth:
+		start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
+		end := start.AddDate(0, 1, 0) // Start of next month
+		m.orders = stats.FilterOrdersByDate(m.allOrders, start, end)
+	default:
+		m.orders = m.allOrders
+	}
+	
+	m.summary = stats.ComputeSummary(m.orders)
+	// Re-init tables with new data
+	m.initOrderTable()
+	m.initInflationTable()
 }
 
 func (m Model) View() string {
@@ -119,7 +160,17 @@ func (m Model) renderContent() string {
 }
 
 func (m Model) renderFooter() string {
-	return m.styles.Footer.Render(fmt.Sprintf("%d orders • %s total • q: quit • tab: switch view", m.summary.Count, itemsString(m.summary.Total)))
+	filterStatus := "All Time"
+	switch m.activeFilter {
+	case FilterYear:
+		filterStatus = "This Year"
+	case FilterMonth:
+		filterStatus = "This Month"
+	}
+
+	help := fmt.Sprintf("%s • %d orders • %s total • y: year • m: month • a: all • q: quit", 
+		filterStatus, m.summary.Count, itemsString(m.summary.Total))
+	return m.styles.Footer.Render(help)
 }
 
 func itemsString(val float64) string {

@@ -5,12 +5,15 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/maheshrijal/zocli/internal/auth"
 	"github.com/maheshrijal/zocli/internal/cli"
 	"github.com/maheshrijal/zocli/internal/config"
+	"github.com/maheshrijal/zocli/internal/export"
 	"github.com/maheshrijal/zocli/internal/format"
 	"github.com/maheshrijal/zocli/internal/sample"
 	"github.com/maheshrijal/zocli/internal/stats"
@@ -72,6 +75,12 @@ func main() {
 		must(runDebugAPI(os.Args[2:]))
 	case "dash":
 		must(runDash(os.Args[2:]))
+	case "export":
+		must(runExport(os.Args[2:]))
+	case "suggest":
+		must(runSuggest(os.Args[2:]))
+	case "wrapped":
+		must(runWrapped(os.Args[2:]))
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", os.Args[1])
 		cli.PrintUsage(os.Stderr)
@@ -665,6 +674,137 @@ func must(err error) {
 	}
 	fmt.Fprintln(os.Stderr, "Error:", err)
 	os.Exit(1)
+}
+
+func runExport(args []string) error {
+	fs := flag.NewFlagSet("export", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	format := fs.String("format", "csv", "Output format: csv, json")
+	output := fs.String("output", "", "Output file (default: stdout)")
+	
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	
+	storePath, err := store.DefaultPath()
+	if err != nil {
+		return err
+	}
+	st, err := store.New(storePath)
+	if err != nil {
+		return err
+	}
+	orders, err := st.Load()
+	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.New("no stored orders yet; run 'zocli sync' first")
+		}
+		return err
+	}
+	
+	var w io.Writer = os.Stdout
+	if *output != "" {
+		f, err := os.Create(*output)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		w = f
+	}
+	
+	switch strings.ToLower(*format) {
+	case "csv":
+		return export.ToCSV(orders, w)
+	case "json":
+		return export.ToJSON(orders, w)
+	default:
+		return fmt.Errorf("unknown format: %s (use csv or json)", *format)
+	}
+}
+
+func runSuggest(args []string) error {
+	storePath, err := store.DefaultPath()
+	if err != nil {
+		return err
+	}
+	st, err := store.New(storePath)
+	if err != nil {
+		return err
+	}
+	orders, err := st.Load()
+	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.New("no stored orders yet; run 'zocli sync' first")
+		}
+		return err
+	}
+	
+	restaurant, dish, err := stats.SuggestRestaurant(orders)
+	if err != nil {
+		fmt.Printf("🎲  Suggest failed: %v\n\n(Tip: Run 'zocli sync' to fetch orders first)\n", err)
+		return nil
+	}
+	
+	fmt.Printf("🎲 How about ordering from: \n\n  ✨ %s ✨\n", restaurant)
+	if dish != "" {
+		fmt.Printf("  (Maybe try the %s?)\n", dish)
+	}
+	fmt.Println()
+	return nil
+}
+
+func runWrapped(args []string) error {
+	fs := flag.NewFlagSet("wrapped", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	yearFlag := fs.Int("year", 0, "Year to generate wrapped for (default: latest year in data)")
+	
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	storePath, err := store.DefaultPath()
+	if err != nil {
+		return err
+	}
+	st, err := store.New(storePath)
+	if err != nil {
+		return err
+	}
+	orders, err := st.Load()
+	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.New("no stored orders yet; run 'zocli sync' first")
+		}
+		return err
+	}
+	
+	summary := stats.ComputeSummary(orders)
+	targetYear := *yearFlag
+	
+	// If no year specified, try to find the latest
+	if targetYear == 0 {
+		targetYear = time.Now().Year()
+		if !summary.Latest.IsZero() {
+			targetYear = summary.Latest.Year()
+		}
+	}
+	
+	// Filter for the target year
+	start := time.Date(targetYear, 1, 1, 0, 0, 0, 0, time.Local)
+	end := start.AddDate(1, 0, 0) // Start of next year
+	yearOrders := stats.FilterOrdersByDate(orders, start, end)
+	
+	if len(yearOrders) == 0 {
+		fmt.Printf("No orders found for %d. Try a different year.\n", targetYear)
+		return nil
+	}
+
+	m := tui.NewWrappedModel(yearOrders, targetYear)
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		return fmt.Errorf("wrapped error: %w", err)
+	}
+	return nil
 }
 
 func isTerminal(f *os.File) bool {

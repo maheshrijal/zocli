@@ -19,6 +19,9 @@ Commands:
   stats      Summarize spend
   inflation  Track unit price history
   config     Show config and data paths
+  export     Export data to CSV/JSON
+  suggest    Pick a random restaurant/dish
+  wrapped    Yearly food journey slideshow [--year 2024]
   version    Print version
   help       Help for a command
 

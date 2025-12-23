@@ -13,7 +13,7 @@ A tiny, powerful CLI to view and analyze your Zomato order history.
 ## Install
 
 ```bash
-brew install --cask maheshrijal/tap/zocli
+brew install maheshrijal/tap/zocli
 ```
 
 ## Quick Start

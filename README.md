@@ -7,6 +7,7 @@ A tiny, powerful CLI to view and analyze your Zomato order history.
 
 - **📈 Inflation Tracker**: Monitor how prices for your favorite items change over time.
 - **💰 Spending Analytics**: Deep dive into spending by weekday, time of day, and top restaurants.
+- **🎁 Zomato Wrapped**: A fun, yearly retrospective of your ordering habits.
 - **🔒 Privacy First**: Your data stays on your machine. Cookies are stored locally.
 
 ## Install
@@ -52,6 +53,31 @@ Analyze your spending habits.
 zocli stats --view patterns   # See when you order the most
 zocli stats --view spend      # See spending by weekday
 zocli stats --view personal   # Top restaurants and items
+```
+
+### `dash`
+Interactive dashboard to explore your data.
+- **Navigation**: Use `Tab` / `Shift+Tab` to switch tabs.
+- **Filters**: Press `y` for **This Year**, `m` for **This Month**, `a` for **All Time**.
+
+### `wrapped`
+Generate a Spotify-Wrapped style slideshow of your food journey.
+```bash
+zocli wrapped
+```
+
+### `suggest`
+Can't decide what to eat? Let zocli pick a restaurant and dish from your favorites.
+```bash
+zocli suggest
+# Output: How about ordering from: ✨ Pizza Hut ✨
+```
+
+### `export`
+Export your data for external analysis.
+```bash
+zocli export --format csv > orders.csv
+zocli export --format json > orders.json
 ```
 
 ### `inflation`

@@ -2,6 +2,7 @@ package stats
 
 import (
 	"errors"
+	"math/rand"
 	"regexp"
 	"sort"
 	"strconv"
@@ -11,6 +12,115 @@ import (
 
 	"github.com/maheshrijal/zocli/internal/zomato"
 )
+
+// SuggestRestaurant recommends a restaurant and a dish based on frequency.
+func SuggestRestaurant(orders []zomato.Order) (string, string) {
+	if len(orders) == 0 {
+		return "No order history to suggest from!", ""
+	}
+
+	// 1. Build frequency map for restaurants
+	resCounts := make(map[string]int)
+	// Map restaurant -> item -> count
+	resItems := make(map[string]map[string]int)
+
+	for _, o := range orders {
+		resName := strings.TrimSpace(o.Restaurant)
+		if resName == "" {
+			continue
+		}
+		resCounts[resName]++
+		
+		if resItems[resName] == nil {
+			resItems[resName] = make(map[string]int)
+		}
+		for _, item := range o.Items {
+			itemName := strings.TrimSpace(item.Name)
+			if itemName != "" {
+				resItems[resName][itemName] += item.Quantity
+			}
+		}
+	}
+
+	if len(resCounts) == 0 {
+		return "No valid restaurants found.", ""
+	}
+
+	// 2. Weighted random selection for Restaurant
+	var choices []string
+	for name, count := range resCounts {
+		for i := 0; i < count; i++ {
+			choices = append(choices, name)
+		}
+	}
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	chosenRes := choices[rng.Intn(len(choices))]
+
+	// 3. Pick best item from that restaurant
+	items := resItems[chosenRes]
+	var bestItem string
+	var maxCount int
+	
+	// Create weighted list for items too, to add variety?
+	// Or just pick the favorite. Let's pick the favorite for now, maybe with a fallback.
+	var itemChoices []string
+	for name, count := range items {
+		if count > maxCount {
+			maxCount = count
+			bestItem = name
+		}
+		// Also build weight list just in case we want to be random later
+		for i := 0; i < count; i++ {
+			itemChoices = append(itemChoices, name)
+		}
+	}
+	
+	// If we have items, strictly picking the top one is "safe", 
+	// but random from top items might be more fun. 
+	// Let's stick to the "Most Ordered" item for that restaurant to be helpful.
+	if bestItem == "" && len(items) > 0 {
+		// Fallback to random key if counts are all 0/weird
+		for k := range items {
+			bestItem = k
+			break
+		}
+	}
+
+	return chosenRes, bestItem
+}
+
+// FilterOrdersByDate filters orders within a specific date range (inclusive).
+func FilterOrdersByDate(orders []zomato.Order, start, end time.Time) []zomato.Order {
+	var filtered []zomato.Order
+	for _, o := range orders {
+		if o.PlacedAt.IsZero() {
+			continue
+		}
+		// Check if order is after or at start AND before or at end
+		if (o.PlacedAt.Equal(start) || o.PlacedAt.After(start)) && 
+		   (o.PlacedAt.Equal(end) || o.PlacedAt.Before(end)) {
+			filtered = append(filtered, o)
+		}
+	}
+	return filtered
+}
+
+func FindMostExpensiveOrder(orders []zomato.Order) (zomato.Order, float64) {
+	var maxOrder zomato.Order
+	var maxAmount float64
+	
+	for _, o := range orders {
+		amount, _ := parseAmount(o.Total)
+		if amount > maxAmount {
+			maxAmount = amount
+			maxOrder = o
+		}
+	}
+	return maxOrder, maxAmount
+}
+
+
 
 type Summary struct {
 	Count    int

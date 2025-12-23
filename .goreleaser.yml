@@ -29,12 +29,14 @@ archives:
 checksum:
   name_template: checksums.txt
 
-brews:
+homebrew_casks:
   - name: zocli
-    directory: Formula
+    directory: Casks
     homepage: https://github.com/maheshrijal/zocli
     description: Unofficial Zomato order tracker CLI
     license: MIT
+    binaries:
+      - zocli
     repository:
       owner: maheshrijal
       name: homebrew-tap
@@ -42,7 +44,3 @@ brews:
     commit_author:
       name: Mahesh Rijal
       email: 62394512+maheshrijal@users.noreply.github.com
-    test: |
-      system "#{bin}/zocli", "version"
-    install: |
-      bin.install "zocli"

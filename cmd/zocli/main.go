@@ -364,13 +364,25 @@ func runSync(args []string) error {
 	}
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.New("not logged in (no saved cookie). Run `zocli auth login` first")
+		}
 		return fmt.Errorf("load config: %w", err)
 	}
 	if strings.TrimSpace(cfg.Cookie) == "" {
-		return errors.New("no cookie found; run 'zocli auth login' first")
+		return errors.New("not logged in (empty cookie). Run `zocli auth login` first")
 	}
 
 	client := zomato.NewClient(cfg.Cookie)
+	fmt.Fprintln(os.Stderr, "Checking login...")
+	ok, err := client.CheckAuth(context.Background())
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return errors.New("not logged in (cookie invalid or expired). Run `zocli auth login` first")
+	}
+
 	terminal := isTerminal(os.Stdout)
 	progress := func(p zomato.FetchProgress) {
 		total := "?"

@@ -206,6 +206,9 @@ func (c *Client) fetchOrdersPage(ctx context.Context, page int) (ordersResponse,
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return out, fmt.Errorf("not logged in (cookie invalid or expired); run 'zocli auth login' first")
+	}
 	if resp.StatusCode != http.StatusOK {
 		return out, fmt.Errorf("zomato orders request failed: %s", resp.Status)
 	}

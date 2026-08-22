@@ -3,8 +3,10 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Config struct {
@@ -27,8 +29,11 @@ func Load(path string) (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
+	if len(strings.TrimSpace(string(data))) == 0 {
+		return cfg, nil
+	}
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return cfg, err
+		return cfg, fmt.Errorf("parse %s: %w (fix or delete the file, then run 'zocli auth login')", path, err)
 	}
 	return cfg, nil
 }

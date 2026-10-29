@@ -170,7 +170,7 @@ type orderEntity struct {
 	OrderDate       string `json:"orderDate"`
 	DishString      string `json:"dishString"`
 	HashID          string `json:"hashId"`
-	Status          int    `json:"status"`
+	Status          json.Number `json:"status"`
 	PaymentStatus   int    `json:"paymentStatus"`
 	DeliveryDetails struct {
 		DeliveryLabel   string `json:"deliveryLabel"`
@@ -253,8 +253,12 @@ func normalizeOrder(raw orderEntity) Order {
 	if status == "" {
 		status = strings.TrimSpace(raw.DeliveryDetails.DeliveryMessage)
 	}
-	if status == "" && raw.Status != 0 {
-		status = fmt.Sprintf("Status %d", raw.Status)
+	if status == "" && raw.Status.String() != "" && raw.Status.String() != "0" {
+		if n, err := raw.Status.Int64(); err == nil {
+			status = fmt.Sprintf("Status %d", n)
+		} else {
+			status = raw.Status.String()
+		}
 	}
 
 	return Order{
